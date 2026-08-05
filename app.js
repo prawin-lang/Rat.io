@@ -1,19 +1,20 @@
-// Rat.io - Reddit Activity Tracker (React 18 + Tailwind SPA)
-// Final Persistent LocalStorage Engine: All created, edited, and deleted accounts, Q&A entries, activities, spaces, and settings are saved permanently in browser storage.
-// Data will NEVER be lost or deleted on page refresh!
+// Rat.io - Reddit Activity Tracker (v5.5 Complete Workflow & KPI Engine)
+// React 18 + Tailwind SPA + Synchronous LocalStorage Auto-Save
+// Complete Reddit Task Management, Due Dates, Red Alerts, Manager Approvals, Interactive Charts & Exports
 
 const { useState, useEffect, useMemo } = React;
 
-// --- LOCALSTORAGE PERSISTENCE HELPERS ---
+// --- LOCALSTORAGE PERSISTENCE ENGINE ---
 const STORAGE_KEYS = {
-  THEME: 'ratio_v5_theme',
-  ACCOUNTS: 'ratio_v5_accounts',
-  ACTIVITIES: 'ratio_v5_activities',
-  TRACKER: 'ratio_v5_tracker',
-  COMMUNITIES: 'ratio_v5_communities',
-  SPACES: 'ratio_v5_spaces',
-  CURRENT_SPACE: 'ratio_v5_current_space',
-  NOTIFICATIONS: 'ratio_v5_notifications'
+  THEME: 'ratio_v55_theme',
+  ACCOUNTS: 'ratio_v55_accounts',
+  ACTIVITIES: 'ratio_v55_activities',
+  TRACKER: 'ratio_v55_tracker',
+  COMMUNITIES: 'ratio_v55_communities',
+  SPACES: 'ratio_v55_spaces',
+  CURRENT_SPACE: 'ratio_v55_current_space',
+  NOTIFICATIONS: 'ratio_v55_notifications',
+  GOALS: 'ratio_v55_goals'
 };
 
 function getStorageItem(key, defaultValue) {
@@ -36,7 +37,7 @@ function setStorageItem(key, value) {
   }
 }
 
-// --- INITIAL SEED SPACES & ACCOUNTS ---
+// --- INITIAL SEED DATA ---
 const INITIAL_SPACES = [
   { id: 'SPARKLE-9082', name: 'Sparkle Growth Team', spacePassword: 'pass123', creatorEmail: 'admin@sparkle.io', role: 'ADMIN' },
   { id: 'APEX-4019', name: 'Apex Growth Ops', spacePassword: 'apexpass', creatorEmail: 'ops@apex.com', role: 'MANAGER' }
@@ -65,9 +66,6 @@ const INITIAL_ACCOUNTS = [
     activeInCount: 24,
     prevActiveInCount: 20,
     weeklyTarget: 25,
-    gologinUrl: 'https://app.gologin.com/profile/ref-98471-nolan',
-    proxyAddress: '192.168.1.105',
-    portNumber: '8080',
     status: 'ACTIVE'
   },
   {
@@ -92,9 +90,6 @@ const INITIAL_ACCOUNTS = [
     activeInCount: 18,
     prevActiveInCount: 18,
     weeklyTarget: 30,
-    gologinUrl: 'https://g.camp/Re%205',
-    proxyAddress: '82.23.178.69',
-    portNumber: '5320',
     status: 'ACTIVE'
   },
   {
@@ -119,9 +114,6 @@ const INITIAL_ACCOUNTS = [
     activeInCount: 12,
     prevActiveInCount: 15,
     weeklyTarget: 20,
-    gologinUrl: 'https://app.gologin.com/profile/ref-98473-garrett',
-    proxyAddress: '192.168.1.107',
-    portNumber: '8082',
     status: 'ACTIVE'
   },
   {
@@ -146,9 +138,6 @@ const INITIAL_ACCOUNTS = [
     activeInCount: 6,
     prevActiveInCount: 6,
     weeklyTarget: 15,
-    gologinUrl: 'https://app.gologin.com/profile/ref-98474-pie',
-    proxyAddress: '192.168.1.108',
-    portNumber: '8083',
     status: 'WARMING'
   },
   {
@@ -173,11 +162,115 @@ const INITIAL_ACCOUNTS = [
     activeInCount: 3,
     prevActiveInCount: 3,
     weeklyTarget: 10,
-    gologinUrl: '',
-    proxyAddress: '',
-    portNumber: '',
     status: 'BANNED'
   }
+];
+
+const TODAY_STR = new Date().toISOString().split('T')[0];
+const YESTERDAY_STR = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+const TOMORROW_STR = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+const INITIAL_TRACKER_ENTRIES = [
+  { 
+    id: 'trk-1', 
+    accountId: 'acc-1', 
+    date: TODAY_STR,
+    startDate: TODAY_STR,
+    dueDate: TODAY_STR,
+    subreddit: 'r/SaaS', 
+    contentType: 'General Comment', 
+    postTitle: 'Best practices for Next.js 15 Server Components',
+    qaContent: 'Q: How do you handle caching in Next.js 15?\nA: Use fetch cache options explicitly.', 
+    brandMention: 'Sparkle Tools', 
+    externalLink: 'https://sparkle.dev', 
+    views: 850, upvotes: 24, comments: 7, replies: 3,
+    approvalStatus: 'Approved',
+    workflowStatus: 'Completed',
+    priority: 'High',
+    managerRemark: 'Great technical answer!',
+    updatedAt: TODAY_STR + ' 14:20'
+  },
+  { 
+    id: 'trk-2', 
+    accountId: 'acc-1', 
+    date: TODAY_STR,
+    startDate: TODAY_STR,
+    dueDate: YESTERDAY_STR, // OVERDUE TASK
+    subreddit: 'r/startups', 
+    contentType: 'Brand Post', 
+    postTitle: 'Scaling B2B Analytics',
+    qaContent: 'Case study post detailing architectural decisions.', 
+    brandMention: 'Sparkle Analytics', 
+    externalLink: 'https://sparkleanalytics.io', 
+    views: 1420, upvotes: 45, comments: 18, replies: 5,
+    approvalStatus: 'Approval Needed', 
+    workflowStatus: 'Waiting for Approval',
+    priority: 'Critical',
+    managerRemark: 'Pending manager review.',
+    updatedAt: TODAY_STR + ' 16:45'
+  },
+  { 
+    id: 'trk-3', 
+    accountId: 'acc-2', 
+    date: TODAY_STR,
+    startDate: TODAY_STR,
+    dueDate: TOMORROW_STR,
+    subreddit: 'r/webdev', 
+    contentType: 'General Post', 
+    postTitle: 'React 19 Hooks Tutorial',
+    qaContent: 'Breakdown of useActionState and useOptimistic hooks.', 
+    brandMention: '', 
+    externalLink: '', 
+    views: 920, upvotes: 35, comments: 12, replies: 4,
+    approvalStatus: 'Pending Review', 
+    workflowStatus: 'Drafting',
+    priority: 'Medium',
+    managerRemark: 'Solid tutorial draft.',
+    updatedAt: TODAY_STR + ' 17:10'
+  },
+  { 
+    id: 'trk-4', 
+    accountId: 'acc-3', 
+    date: TODAY_STR,
+    startDate: TODAY_STR,
+    dueDate: TODAY_STR,
+    subreddit: 'r/ArtificialInteligence', 
+    contentType: 'Brand Comment', 
+    postTitle: 'LLM Agents Frameworks',
+    qaContent: 'Recommended Sparkle AI workflows for automated pipelines.', 
+    brandMention: 'Sparkle AI', 
+    externalLink: 'https://sparkle.dev/ai', 
+    views: 640, upvotes: 18, comments: 4, replies: 2,
+    approvalStatus: 'Revision Required', 
+    workflowStatus: 'Research',
+    priority: 'High',
+    managerRemark: 'Please add benchmarks to the response.',
+    updatedAt: TODAY_STR + ' 18:00'
+  },
+  { 
+    id: 'trk-5', 
+    accountId: 'acc-4', 
+    date: YESTERDAY_STR,
+    startDate: YESTERDAY_STR,
+    dueDate: YESTERDAY_STR, // OVERDUE TASK
+    subreddit: 'r/marketing', 
+    contentType: 'Brand Post', 
+    postTitle: 'Growth Hacking Strategies 2026',
+    qaContent: 'Overview of organic Reddit engagement tactics.', 
+    brandMention: 'Growth Sparkle', 
+    externalLink: 'https://growthsparkle.io', 
+    views: 410, upvotes: 9, comments: 2, replies: 1,
+    approvalStatus: 'Approval Needed', 
+    workflowStatus: 'Ready to Post',
+    priority: 'Critical',
+    managerRemark: 'Awaiting manager approval.',
+    updatedAt: YESTERDAY_STR + ' 11:30'
+  }
+];
+
+const INITIAL_ACTIVITIES = [
+  { id: 'act-1', accountId: 'acc-1', date: TODAY_STR, sessionTime: 45, upvotes: 18, comments: 6, posts: 1, postKarma: 1450, commentKarma: 3200, totalKarma: 4650, postContribution: 1, commentContribution: 4, notes: 'Engaged in startup thread.' },
+  { id: 'act-2', accountId: 'acc-2', date: TODAY_STR, sessionTime: 60, upvotes: 25, comments: 10, posts: 2, postKarma: 2100, commentKarma: 4850, totalKarma: 6950, postContribution: 2, commentContribution: 8, notes: 'Answered Next.js questions.' }
 ];
 
 const INITIAL_COMMUNITIES = [
@@ -185,89 +278,16 @@ const INITIAL_COMMUNITIES = [
   { id: 'com-2', accountId: 'acc-2', communityName: 'r/webdev', joinedDate: '2026-01-12', rulesRead: true, promotionAllowed: false, notes: 'Helpful tech discussions only.' }
 ];
 
-const INITIAL_ACTIVITIES = [
-  { 
-    id: 'act-1', accountId: 'acc-1', date: '2026-08-04', sessionTime: 45, 
-    upvotes: 18, comments: 6, posts: 1, 
-    postKarma: 1450, commentKarma: 3200, totalKarma: 4650, 
-    postContribution: 1, commentContribution: 4,
-    notes: 'Engaged in startup funding discussion thread.' 
-  },
-  { 
-    id: 'act-2', accountId: 'acc-2', date: '2026-08-04', sessionTime: 60, 
-    upvotes: 25, comments: 10, posts: 2, 
-    postKarma: 2100, commentKarma: 4850, totalKarma: 6950, 
-    postContribution: 2, commentContribution: 8,
-    notes: 'Answered Next.js App Router optimization questions.' 
-  }
-];
-
-const INITIAL_TRACKER_ENTRIES = [
-  { 
-    id: 'trk-1', 
-    accountId: 'acc-1', 
-    date: '2026-08-04', 
-    subreddit: 'r/SaaS', 
-    contentType: 'General Comment', 
-    postTitle: 'Best practices for Next.js 15 Server Components',
-    qaContent: 'Q: How do you handle caching in Next.js 15?\nA: Use fetch cache options explicitly.', 
-    brandMention: 'Sparkle Tools', 
-    externalLink: 'https://sparkle.dev', 
-    views: 850, upvotes: 24, comments: 7, 
-    approvalStatus: 'Approved', 
-    managerRemark: 'Great technical answer!',
-    updatedAt: '2026-08-04 14:20'
-  },
-  { 
-    id: 'trk-2', 
-    accountId: 'acc-1', 
-    date: '2026-08-04', 
-    subreddit: 'r/startups', 
-    contentType: 'Brand Post', 
-    postTitle: 'Scaling B2B Analytics',
-    qaContent: 'Case study post detailing architectural decisions.', 
-    brandMention: 'Sparkle Analytics', 
-    externalLink: 'https://sparkleanalytics.io', 
-    views: 1420, upvotes: 45, comments: 18, 
-    approvalStatus: 'Approval Needed', 
-    managerRemark: 'Pending manager review.',
-    updatedAt: '2026-08-04 16:45'
-  },
-  { 
-    id: 'trk-3', 
-    accountId: 'acc-2', 
-    date: '2026-08-04', 
-    subreddit: 'r/webdev', 
-    contentType: 'General Post', 
-    postTitle: 'React 19 Hooks Tutorial',
-    qaContent: 'Breakdown of useActionState and useOptimistic hooks.', 
-    brandMention: '', 
-    externalLink: '', 
-    views: 920, upvotes: 35, comments: 12, 
-    approvalStatus: 'Approved', 
-    managerRemark: 'Solid tutorial post.',
-    updatedAt: '2026-08-04 17:10'
-  },
-  { 
-    id: 'trk-4', 
-    accountId: 'acc-3', 
-    date: '2026-08-04', 
-    subreddit: 'r/ArtificialInteligence', 
-    contentType: 'Brand Comment', 
-    postTitle: 'LLM Agents Frameworks',
-    qaContent: 'Recommended Sparkle AI workflows for automated pipelines.', 
-    brandMention: 'Sparkle AI', 
-    externalLink: 'https://sparkle.dev/ai', 
-    views: 640, upvotes: 18, comments: 4, 
-    approvalStatus: 'Approved', 
-    managerRemark: 'Approved',
-    updatedAt: '2026-08-04 18:00'
-  }
-];
-
 const INITIAL_NOTIFICATIONS = [
-  { id: 'notif-1', title: 'Approval Needed', message: 'u/Nolan_098 submitted a Brand Post requiring manager approval.', type: 'warning', read: false, createdAt: '2026-08-04 16:45' }
+  { id: 'notif-1', title: '🚨 Overdue Task Alert', message: 'Task "Scaling B2B Analytics" for u/Nolan_098 is overdue!', type: 'danger', read: false, createdAt: TODAY_STR + ' 09:00' },
+  { id: 'notif-2', title: '🔔 Approval Needed', message: 'u/Nolan_098 submitted a Brand Post requiring manager approval.', type: 'warning', read: false, createdAt: TODAY_STR + ' 16:45' }
 ];
+
+const INITIAL_GOALS = {
+  dailyTarget: 5,
+  weeklyTarget: 25,
+  monthlyTarget: 100
+};
 
 // --- DYNAMIC HEALTH SCORE ENGINE ---
 function calculateHealthScore(account, activities, trackerEntries) {
@@ -288,7 +308,7 @@ function calculateHealthScore(account, activities, trackerEntries) {
     ...accountTrks.map(t => t.date)
   ].sort((a,b) => new Date(b) - new Date(a));
 
-  const latestDateStr = sortedDates[0] || '2026-08-04';
+  const latestDateStr = sortedDates[0] || TODAY_STR;
   const latestDate = new Date(latestDateStr);
   const now = new Date();
   const diffDays = Math.floor((now - latestDate) / (1000 * 60 * 60 * 24));
@@ -347,9 +367,9 @@ function renderTrendBadge(currentVal, prevVal) {
   );
 }
 
-// --- MAIN RAT.IO APPLICATION CONTAINER ---
+// --- MAIN RAT.IO V5.5 APPLICATION CONTAINER ---
 function RAMSApp() {
-  const [activeTab, setActiveTab] = useState('daily-activity');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [theme, setTheme] = useState(() => getStorageItem(STORAGE_KEYS.THEME, 'dark'));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notifDrawerOpen, setNotifDrawerOpen] = useState(false);
@@ -364,15 +384,16 @@ function RAMSApp() {
   const [createSpaceForm, setCreateSpaceForm] = useState({ spaceName: '', spaceId: '', spacePassword: '', creatorEmail: '' });
   const [joinSpaceForm, setJoinSpaceForm] = useState({ userEmail: '', spaceId: '', spacePassword: '' });
 
-  const [userRole, setUserRole] = useState('ADMIN');
+  const [userRole, setUserRole] = useState('ADMIN'); // 'ADMIN' or 'EMPLOYEE'
   
   const [accounts, setAccountsState] = useState(() => getStorageItem(STORAGE_KEYS.ACCOUNTS, INITIAL_ACCOUNTS));
   const [communities, setCommunitiesState] = useState(() => getStorageItem(STORAGE_KEYS.COMMUNITIES, INITIAL_COMMUNITIES));
   const [activities, setActivitiesState] = useState(() => getStorageItem(STORAGE_KEYS.ACTIVITIES, INITIAL_ACTIVITIES));
   const [trackerEntries, setTrackerEntriesState] = useState(() => getStorageItem(STORAGE_KEYS.TRACKER, INITIAL_TRACKER_ENTRIES));
   const [notifications, setNotificationsState] = useState(() => getStorageItem(STORAGE_KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS));
+  const [goals, setGoalsState] = useState(() => getStorageItem(STORAGE_KEYS.GOALS, INITIAL_GOALS));
 
-  // SYNCHRONOUS UPDATER HELPERS TO GUARANTEE 100% RELIABLE LOCALSTORAGE WRITES
+  // SYNCHRONOUS UPDATER HELPERS
   const updateAccounts = (newAccounts) => {
     setAccountsState(newAccounts);
     setStorageItem(STORAGE_KEYS.ACCOUNTS, newAccounts);
@@ -408,6 +429,11 @@ function RAMSApp() {
     setStorageItem(STORAGE_KEYS.NOTIFICATIONS, newNotifs);
   };
 
+  const updateGoals = (newGoals) => {
+    setGoalsState(newGoals);
+    setStorageItem(STORAGE_KEYS.GOALS, newGoals);
+  };
+
   useEffect(() => { 
     setStorageItem(STORAGE_KEYS.THEME, theme); 
     document.documentElement.setAttribute('data-theme', theme); 
@@ -441,6 +467,7 @@ function RAMSApp() {
       updateSpaces(INITIAL_SPACES);
       updateCurrentSpace(INITIAL_SPACES[0]);
       updateNotifications(INITIAL_NOTIFICATIONS);
+      updateGoals(INITIAL_GOALS);
       triggerNotification("Data Reset", "App state reset to demo defaults.", "warning");
     }
   };
@@ -491,6 +518,7 @@ function RAMSApp() {
         <div className="fixed top-5 right-5 z-50 animate-bounce bg-slate-900 border border-orange-500/40 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 max-w-sm">
           <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
             toastMessage.type === 'success' ? 'bg-emerald-500/20 text-emerald-400' :
+            toastMessage.type === 'danger' ? 'bg-rose-500/20 text-rose-400' :
             toastMessage.type === 'warning' ? 'bg-amber-500/20 text-amber-400' : 'bg-orange-500/20 text-orange-400'
           }`}>
             <i data-lucide="bell" className="w-4 h-4"></i>
@@ -516,7 +544,7 @@ function RAMSApp() {
             {!sidebarCollapsed && (
               <div>
                 <h1 className="font-black tracking-tight text-xl text-white leading-tight flex items-center gap-1">
-                  Rat.io <span className="text-[9px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 font-bold border border-orange-500/30">PRO</span>
+                  Rat.io <span className="text-[9px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 font-bold border border-orange-500/30">v5.5</span>
                 </h1>
                 <p className="text-[10px] text-slate-400 font-medium tracking-wide uppercase">Reddit Activity Tracker</p>
               </div>
@@ -549,7 +577,7 @@ function RAMSApp() {
 
         <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
           {[
-            { id: 'dashboard', label: 'Executive Dashboard', icon: 'layout-dashboard' },
+            { id: 'dashboard', label: 'Executive KPI Dashboard', icon: 'layout-dashboard' },
             { id: 'daily-activity', label: 'Daily Activity & Accounts', icon: 'activity', count: accounts.length },
             { id: 'comment-tracker', label: 'Comment & Post Tracker', icon: 'message-square-plus', count: trackerEntries.length },
             { id: 'communities', label: 'Community Tracker', icon: 'users' },
@@ -586,9 +614,13 @@ function RAMSApp() {
         {!sidebarCollapsed && (
           <div className="p-3 border-t border-slate-800 bg-slate-950/60 space-y-2.5">
             <div className="flex items-center justify-between text-[11px] text-slate-400">
-              <span>Role: <strong className="text-orange-400">{userRole}</strong></span>
+              <span>Active Role: <strong className="text-orange-400">{userRole}</strong></span>
               <button 
-                onClick={() => setUserRole(userRole === 'ADMIN' ? 'MANAGER' : 'ADMIN')} 
+                onClick={() => {
+                  const nextRole = userRole === 'ADMIN' ? 'EMPLOYEE' : 'ADMIN';
+                  setUserRole(nextRole);
+                  triggerNotification("Role Changed", `Switched to ${nextRole} view mode.`, "info");
+                }} 
                 className="text-slate-400 hover:text-white underline text-[10px]"
               >
                 Switch Role
@@ -631,12 +663,12 @@ function RAMSApp() {
         <header className="h-16 border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-20 px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h2 className="text-base font-extrabold text-white tracking-tight">
-              {activeTab === 'dashboard' && 'Executive Dashboard (KPI Metric Summary & Line Tables)'}
+              {activeTab === 'dashboard' && 'Executive KPI Dashboard & Workflow Management System'}
               {activeTab === 'daily-activity' && 'Daily Activity & Master Accounts Table'}
-              {activeTab === 'comment-tracker' && 'Comment & Post Tracker (Subreddit & Content Type Dropdown)'}
+              {activeTab === 'comment-tracker' && 'Comment & Post Tracker (Approval Workflows & Priority)'}
               {activeTab === 'communities' && 'Community Tracker'}
-              {activeTab === 'calendar' && 'Google Calendar Style Schedule & Reminders'}
-              {activeTab === 'reports' && 'Filtered Reports & Data Export'}
+              {activeTab === 'calendar' && 'Google Calendar View & Task Due Dates'}
+              {activeTab === 'reports' && 'Reports & Multi-Format Data Export (Excel, CSV, PDF)'}
             </h2>
 
             <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold">
@@ -646,6 +678,7 @@ function RAMSApp() {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* NOTIFICATION DRAWER BUTTON */}
             <div className="relative">
               <button 
                 onClick={() => setNotifDrawerOpen(!notifDrawerOpen)}
@@ -662,7 +695,7 @@ function RAMSApp() {
               {notifDrawerOpen && (
                 <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <h3 className="font-bold text-xs text-white">Notifications</h3>
+                    <h3 className="font-bold text-xs text-white">Notification Center</h3>
                     <button 
                       onClick={() => updateNotifications(notifications.map(n => ({ ...n, read: true })))}
                       className="text-[10px] text-orange-400 hover:underline"
@@ -675,8 +708,13 @@ function RAMSApp() {
                       <p className="text-xs text-slate-500 py-4 text-center">No notifications</p>
                     ) : (
                       notifications.map(n => (
-                        <div key={n.id} className={`p-2.5 rounded-xl border text-xs ${n.read ? 'bg-slate-950/50 border-slate-800/60 text-slate-400' : 'bg-slate-800/60 border-orange-500/30 text-white font-medium'}`}>
-                          <div className="font-bold text-slate-200">{n.title}</div>
+                        <div key={n.id} className={`p-2.5 rounded-xl border text-xs ${
+                          n.read ? 'bg-slate-950/50 border-slate-800/60 text-slate-400' : 
+                          n.type === 'danger' ? 'bg-rose-500/10 border-rose-500/40 text-rose-200' :
+                          n.type === 'warning' ? 'bg-amber-500/10 border-amber-500/40 text-amber-200' :
+                          'bg-slate-800/60 border-orange-500/30 text-white font-medium'
+                        }`}>
+                          <div className="font-bold text-slate-100">{n.title}</div>
                           <div className="text-[11px] mt-0.5">{n.message}</div>
                           <div className="text-[9px] text-slate-500 mt-1">{n.createdAt}</div>
                         </div>
@@ -704,6 +742,8 @@ function RAMSApp() {
               accounts={accounts} 
               activities={activities} 
               trackerEntries={trackerEntries}
+              goals={goals}
+              notifications={notifications}
             />
           )}
 
@@ -742,6 +782,7 @@ function RAMSApp() {
               accounts={accounts}
               activities={activities}
               trackerEntries={trackerEntries}
+              goals={goals}
             />
           )}
 
@@ -888,21 +929,80 @@ function RAMSApp() {
 }
 
 // ==========================================
-// 1. FULL DASHBOARD OVERVIEW (KPI BOXES TOP + GROUP A/B LINE TABLES BELOW)
+// 1. EXECUTIVE KPI DASHBOARD (REAL-TIME WIDGETS, CHARTS, & TEAM PERFORMANCE)
 // ==========================================
-function FullDashboardOverview({ accounts, activities, trackerEntries }) {
-  const totalAccounts = accounts.length;
-  const activeAccounts = accounts.filter(a => a.status === 'ACTIVE').length;
-  const bannedAccounts = accounts.filter(a => a.status === 'BANNED').length;
+function FullDashboardOverview({ accounts, activities, trackerEntries, goals, notifications }) {
+  const today = TODAY_STR;
+  const tomorrow = TOMORROW_STR;
 
-  const pendingApprovals = trackerEntries.filter(t => t.approvalStatus === 'Approval Needed').length;
+  // 1. TASK OVERVIEW KPIS
+  const totalTasks = trackerEntries.length;
+  const tasksCompletedToday = trackerEntries.filter(t => t.date === today && (t.workflowStatus === 'Completed' || t.approvalStatus === 'Approved')).length;
+  const tasksInProgress = trackerEntries.filter(t => t.workflowStatus === 'Drafting' || t.workflowStatus === 'Research' || t.workflowStatus === 'Ready to Post').length;
+  const pendingTasks = trackerEntries.filter(t => t.workflowStatus !== 'Completed').length;
   
-  const brandPosts = trackerEntries.filter(t => t.contentType === 'Brand Post').length;
-  const brandComments = trackerEntries.filter(t => t.contentType === 'Brand Comment').length;
+  // OVERDUE CHECK: dueDate < today && not completed
+  const overdueTasks = trackerEntries.filter(t => t.dueDate && t.dueDate < today && t.workflowStatus !== 'Completed');
+  const overdueCount = overdueTasks.length;
 
-  const generalPosts = trackerEntries.filter(t => t.contentType === 'General Post').length;
-  const generalComments = trackerEntries.filter(t => t.contentType === 'General Comment').length;
+  // Upcoming next 7 days
+  const upcoming7DaysCount = trackerEntries.filter(t => {
+    if (!t.dueDate) return false;
+    const diff = (new Date(t.dueDate) - new Date(today)) / (1000 * 60 * 60 * 24);
+    return diff >= 0 && diff <= 7;
+  }).length;
 
+  // 2. REDDIT ACTIVITY KPIS TODAY
+  const postsCreatedToday = trackerEntries.filter(t => t.date === today && t.contentType.includes('Post')).length;
+  const commentsCreatedToday = trackerEntries.filter(t => t.date === today && t.contentType.includes('Comment')).length;
+  const repliesCreatedToday = trackerEntries.filter(t => t.date === today).reduce((sum, t) => sum + (t.replies || 0), 0);
+  const totalActivitiesToday = postsCreatedToday + commentsCreatedToday + repliesCreatedToday;
+
+  const weeklyActivityCount = trackerEntries.length; // Active scope
+  const monthlyActivityCount = trackerEntries.length * 3;
+
+  // 3. GOAL TRACKING KPIS & PROGRESS
+  const dailyTarget = goals.dailyTarget || 5;
+  const weeklyTarget = goals.weeklyTarget || 25;
+  const monthlyTarget = goals.monthlyTarget || 100;
+
+  const dailyGoalPct = Math.min(100, Math.round((totalActivitiesToday / dailyTarget) * 100));
+  const weeklyGoalPct = Math.min(100, Math.round((weeklyActivityCount / weeklyTarget) * 100));
+  const monthlyGoalPct = Math.min(100, Math.round((monthlyActivityCount / monthlyTarget) * 100));
+
+  // 4. APPROVAL MANAGEMENT KPIS
+  const approvalNeededCount = trackerEntries.filter(t => t.approvalStatus === 'Approval Needed').length;
+  const pendingApprovalCount = trackerEntries.filter(t => t.approvalStatus === 'Pending Review' || t.approvalStatus === 'Approval Needed').length;
+  const approvedToday = trackerEntries.filter(t => t.approvalStatus === 'Approved' && t.date === today).length;
+  const rejectedToday = trackerEntries.filter(t => t.approvalStatus === 'Rejected' && t.date === today).length;
+  const revisionRequiredCount = trackerEntries.filter(t => t.approvalStatus === 'Revision Required').length;
+
+  // 5. DUE DATE TRACKING KPIS
+  const dueTodayCount = trackerEntries.filter(t => t.dueDate === today).length;
+  const dueTomorrowCount = trackerEntries.filter(t => t.dueDate === tomorrow).length;
+  const dueThisWeekCount = trackerEntries.filter(t => {
+    if (!t.dueDate) return false;
+    const diff = (new Date(t.dueDate) - new Date(today)) / (1000 * 60 * 60 * 24);
+    return diff >= 0 && diff <= 7;
+  }).length;
+
+  // 6. WORKFLOW STATUS COUNTS
+  const workflowCounts = {
+    'Not Started': trackerEntries.filter(t => t.workflowStatus === 'Not Started').length,
+    'Research': trackerEntries.filter(t => t.workflowStatus === 'Research').length,
+    'Drafting': trackerEntries.filter(t => t.workflowStatus === 'Drafting').length,
+    'Ready to Post': trackerEntries.filter(t => t.workflowStatus === 'Ready to Post').length,
+    'Posted': trackerEntries.filter(t => t.workflowStatus === 'Posted').length,
+    'Waiting for Approval': trackerEntries.filter(t => t.workflowStatus === 'Waiting for Approval').length,
+    'Approved': trackerEntries.filter(t => t.workflowStatus === 'Approved').length,
+    'Completed': trackerEntries.filter(t => t.workflowStatus === 'Completed').length
+  };
+
+  // 7. TASK PRIORITY COUNTS
+  const highPriorityCount = trackerEntries.filter(t => t.priority === 'High').length;
+  const criticalPriorityCount = trackerEntries.filter(t => t.priority === 'Critical').length;
+
+  // GROUP A & GROUP B ACCOUNTS FOR TABLES
   const groupA = useMemo(() => accounts.filter(a => a.group === 'Group A'), [accounts]);
   const groupB = useMemo(() => accounts.filter(a => a.group === 'Group B'), [accounts]);
 
@@ -954,17 +1054,11 @@ function FullDashboardOverview({ accounts, activities, trackerEntries }) {
           </td>
           <td className="py-3 px-2 text-center">
             {acc.status === 'BANNED' ? (
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                BANNED
-              </span>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">BANNED</span>
             ) : acc.status === 'WARMING' ? (
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                WARMING
-              </span>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">WARMING</span>
             ) : (
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                ACTIVE
-              </span>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">ACTIVE</span>
             )}
           </td>
         </tr>
@@ -974,73 +1068,263 @@ function FullDashboardOverview({ accounts, activities, trackerEntries }) {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-white">Dashboard Overview</h2>
-          <p className="text-xs text-slate-400">KPI Summary boxes top | Line-by-line Group A (Left) & Group B (Right) account status tables below.</p>
+      
+      {/* OVERDUE CRITICAL RED BANNER ALERT */}
+      {overdueCount > 0 && (
+        <div className="p-4 rounded-3xl bg-rose-500/15 border-2 border-rose-500/40 text-rose-200 flex items-center justify-between animate-pulse shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center font-extrabold text-lg shrink-0">
+              🚨
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-white">Critical Overdue Task Warning</h3>
+              <p className="text-xs text-rose-300 font-medium">There are <strong>{overdueCount} overdue tasks</strong> whose Due Dates have passed without completion!</p>
+            </div>
+          </div>
+          <span className="px-3 py-1 rounded-xl bg-rose-500 text-white font-extrabold text-xs shadow-lg">
+            {overdueCount} Overdue
+          </span>
+        </div>
+      )}
+
+      {/* 1. TOP KPI WIDGETS GRID */}
+      <div>
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Core Executive Dashboard Metrics</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3.5">
+          
+          <div className="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-semibold text-slate-400">Total Tasks</p>
+              <h4 className="text-xl font-black text-white font-mono mt-0.5">{totalTasks}</h4>
+              <p className="text-[9px] text-emerald-400 font-medium mt-0.5">{tasksCompletedToday} completed today</p>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center">
+              <i data-lucide="check-square" className="w-4 h-4"></i>
+            </div>
+          </div>
+
+          <div className={`bg-slate-900/90 border p-3.5 rounded-2xl flex items-center justify-between ${overdueCount > 0 ? 'border-rose-500/40 bg-rose-500/5' : 'border-slate-800'}`}>
+            <div>
+              <p className="text-[10px] font-semibold text-rose-400">Tasks Overdue</p>
+              <h4 className="text-xl font-black text-rose-300 font-mono mt-0.5">{overdueCount}</h4>
+              <p className="text-[9px] text-rose-400 font-medium mt-0.5">High Red Priority</p>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center">
+              <i data-lucide="alert-triangle" className="w-4 h-4"></i>
+            </div>
+          </div>
+
+          <div className="bg-slate-900/90 border border-amber-500/30 p-3.5 rounded-2xl flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-semibold text-amber-400">Pending Approvals</p>
+              <h4 className="text-xl font-black text-amber-300 font-mono mt-0.5">{approvalNeededCount}</h4>
+              <p className="text-[9px] text-amber-300 font-medium mt-0.5">{revisionRequiredCount} revision required</p>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+              <i data-lucide="clock" className="w-4 h-4"></i>
+            </div>
+          </div>
+
+          <div className="bg-slate-900/90 border border-cyan-500/30 p-3.5 rounded-2xl flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-semibold text-cyan-400">Activities Today</p>
+              <h4 className="text-xl font-black text-cyan-300 font-mono mt-0.5">{totalActivitiesToday}</h4>
+              <p className="text-[9px] text-cyan-300 font-medium mt-0.5">{postsCreatedToday}P / {commentsCreatedToday}C / {repliesCreatedToday}R</p>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center">
+              <i data-lucide="message-circle" className="w-4 h-4"></i>
+            </div>
+          </div>
+
+          <div className="bg-slate-900/90 border border-purple-500/30 p-3.5 rounded-2xl flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-semibold text-purple-400">Priority Tasks</p>
+              <h4 className="text-xl font-black text-purple-300 font-mono mt-0.5">{criticalPriorityCount + highPriorityCount}</h4>
+              <p className="text-[9px] text-purple-300 font-medium mt-0.5">{criticalPriorityCount} Critical / {highPriorityCount} High</p>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center">
+              <i data-lucide="flame" className="w-4 h-4"></i>
+            </div>
+          </div>
+
+          <div className="bg-slate-900/90 border border-emerald-500/30 p-3.5 rounded-2xl flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-semibold text-emerald-400">Daily Goal</p>
+              <h4 className="text-xl font-black text-emerald-300 font-mono mt-0.5">{dailyGoalPct}%</h4>
+              <p className="text-[9px] text-emerald-400 font-medium mt-0.5">{totalActivitiesToday} / {dailyTarget} Target</p>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+              <i data-lucide="target" className="w-4 h-4"></i>
+            </div>
+          </div>
+
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold text-slate-400">Overall Accounts</p>
-            <h3 className="text-2xl font-extrabold text-white mt-1 font-mono">{totalAccounts}</h3>
+      {/* 2. GOAL PROGRESS RINGS & INTERACTIVE CHARTS */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* GOAL PROGRESS RINGS */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
+          <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
+            <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+              <i data-lucide="pie-chart" className="w-4 h-4 text-orange-400"></i> Goal Progress Rings
+            </h3>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 font-bold">Auto-Updating</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center">
-            <i data-lucide="users" className="w-5 h-5"></i>
-          </div>
-        </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold text-slate-400">Active vs Banned</p>
-            <div className="flex items-center gap-2 mt-1 font-mono font-extrabold text-lg">
-              <span className="text-emerald-400">{activeAccounts} Active</span>
-              <span className="text-slate-600">/</span>
-              <span className="text-rose-400">{bannedAccounts} Banned</span>
+          <div className="space-y-4 text-xs">
+            <div>
+              <div className="flex justify-between font-bold mb-1">
+                <span>Daily Activity Goal</span>
+                <span className="text-emerald-400 font-mono">{dailyGoalPct}%</span>
+              </div>
+              <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                <div className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500" style={{ width: `${dailyGoalPct}%` }}></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between font-bold mb-1">
+                <span>Weekly Activity Goal</span>
+                <span className="text-cyan-400 font-mono">{weeklyGoalPct}%</span>
+              </div>
+              <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                <div className="bg-gradient-to-r from-cyan-500 to-blue-400 h-full rounded-full transition-all duration-500" style={{ width: `${weeklyGoalPct}%` }}></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between font-bold mb-1">
+                <span>Monthly Activity Goal</span>
+                <span className="text-purple-400 font-mono">{monthlyGoalPct}%</span>
+              </div>
+              <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                <div className="bg-gradient-to-r from-purple-500 to-amber-400 h-full rounded-full transition-all duration-500" style={{ width: `${monthlyGoalPct}%` }}></div>
+              </div>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
-            <i data-lucide="shield-check" className="w-5 h-5"></i>
+        </div>
+
+        {/* WORKFLOW PIPELINE BAR CHART */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
+          <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
+            <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+              <i data-lucide="bar-chart-2" className="w-4 h-4 text-cyan-400"></i> Workflow Status Pipeline
+            </h3>
+            <span className="text-[10px] text-slate-400 font-mono">{totalTasks} Total</span>
+          </div>
+
+          <div className="space-y-2 text-xs">
+            {Object.entries(workflowCounts).map(([statusName, count]) => (
+              <div key={statusName} className="flex items-center justify-between gap-2">
+                <span className="w-28 truncate text-[11px] text-slate-400 font-semibold">{statusName}</span>
+                <div className="flex-1 bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
+                  <div 
+                    className="bg-cyan-500 h-full rounded-full transition-all" 
+                    style={{ width: `${totalTasks > 0 ? (count / totalTasks) * 100 : 0}%` }}
+                  ></div>
+                </div>
+                <span className="w-6 text-right font-mono font-bold text-white text-[11px]">{count}</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="bg-slate-900/90 border border-amber-500/30 p-4 rounded-2xl shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold text-amber-400">Approval Needed</p>
-            <h3 className="text-2xl font-extrabold text-amber-300 mt-1 font-mono">{pendingApprovals}</h3>
+        {/* APPROVAL STATUS BREAKDOWN */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
+          <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
+            <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+              <i data-lucide="shield-check" className="w-4 h-4 text-amber-400"></i> Approval Distribution
+            </h3>
+            <span className="text-[10px] text-amber-400 font-bold">{pendingApprovalCount} Pending</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
-            <i data-lucide="clock" className="w-5 h-5"></i>
-          </div>
-        </div>
 
-        <div className="bg-slate-900/90 border border-cyan-500/30 p-4 rounded-2xl shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold text-cyan-400">Brand Mentions</p>
-            <div className="text-xs font-mono font-bold mt-1 text-slate-200">
-              <span className="text-cyan-300">{brandPosts} Posts</span>, <span className="text-emerald-300">{brandComments} Comments</span>
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+              <div className="text-slate-400 text-[10px]">Approved Today</div>
+              <div className="text-xl font-bold text-emerald-400 font-mono mt-0.5">{approvedToday}</div>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+              <div className="text-slate-400 text-[10px]">Approval Needed</div>
+              <div className="text-xl font-bold text-amber-400 font-mono mt-0.5">{approvalNeededCount}</div>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+              <div className="text-slate-400 text-[10px]">Rejected Today</div>
+              <div className="text-xl font-bold text-rose-400 font-mono mt-0.5">{rejectedToday}</div>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20">
+              <div className="text-slate-400 text-[10px]">Revision Required</div>
+              <div className="text-xl font-bold text-purple-400 font-mono mt-0.5">{revisionRequiredCount}</div>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center">
-            <i data-lucide="target" className="w-5 h-5"></i>
-          </div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold text-slate-400">General Engagement</p>
-            <div className="text-xs font-mono font-bold mt-1 text-slate-200">
-              <span className="text-white">{generalPosts} Posts</span>, <span className="text-slate-300">{generalComments} Comments</span>
-            </div>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center">
-            <i data-lucide="message-square" className="w-5 h-5"></i>
-          </div>
+      </div>
+
+      {/* 3. TEAM PERFORMANCE TABLE */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h3 className="font-extrabold text-base text-white flex items-center gap-2">
+            <i data-lucide="users" className="w-5 h-5 text-orange-400"></i>
+            Team Performance & Workflow Allocation
+          </h3>
+          <span className="text-xs text-slate-400 font-mono">{accounts.length} Active Team Accounts</span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="bg-slate-950 border-b border-slate-800 text-[10px] text-slate-400 uppercase font-semibold">
+              <tr>
+                <th className="py-3 px-4">Employee / Account</th>
+                <th className="py-3 px-3 text-center">Tasks Assigned</th>
+                <th className="py-3 px-3 text-center">Completed</th>
+                <th className="py-3 px-3 text-center">Pending</th>
+                <th className="py-3 px-3 text-center">Approval Pending</th>
+                <th className="py-3 px-3 text-center">Goal %</th>
+                <th className="py-3 px-4 text-center">Performance Rating</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/80">
+              {accounts.map(acc => {
+                const empTasks = trackerEntries.filter(t => t.accountId === acc.id);
+                const assignedCount = empTasks.length;
+                const completedCount = empTasks.filter(t => t.workflowStatus === 'Completed' || t.approvalStatus === 'Approved').length;
+                const pendingCount = empTasks.filter(t => t.workflowStatus !== 'Completed').length;
+                const approvalPendingCount = empTasks.filter(t => t.approvalStatus === 'Approval Needed' || t.approvalStatus === 'Pending Review').length;
+                const goalPct = Math.min(100, Math.round((completedCount / (acc.weeklyTarget || 15)) * 100));
+
+                return (
+                  <tr key={acc.id} className="hover:bg-slate-800/60 transition-colors">
+                    <td className="py-3.5 px-4 font-bold text-orange-400">
+                      u/{acc.username} <span className="text-slate-500 font-normal text-[10px]">({acc.group})</span>
+                    </td>
+                    <td className="py-3.5 px-3 text-center font-mono font-bold text-white">{assignedCount}</td>
+                    <td className="py-3.5 px-3 text-center font-mono font-bold text-emerald-400">{completedCount}</td>
+                    <td className="py-3.5 px-3 text-center font-mono font-bold text-amber-400">{pendingCount}</td>
+                    <td className="py-3.5 px-3 text-center font-mono font-bold text-purple-400">{approvalPendingCount}</td>
+                    <td className="py-3.5 px-3 text-center font-mono font-bold text-cyan-400">{goalPct}%</td>
+                    <td className="py-3.5 px-4 text-center">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                        goalPct >= 80 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                        goalPct >= 50 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                        'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                      }`}>
+                        {goalPct >= 80 ? 'EXCELLENT' : goalPct >= 50 ? 'GOOD' : 'NEEDS IMPROVEMENT'}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
+      {/* 4. SIDE-BY-SIDE GROUP A & GROUP B LINE TABLES */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-slate-900/90 border border-purple-500/30 rounded-3xl p-5 shadow-xl space-y-3">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -1058,7 +1342,7 @@ function FullDashboardOverview({ accounts, activities, trackerEntries }) {
               <thead className="bg-slate-950 border-b border-slate-800 text-[10px] text-slate-400 uppercase font-semibold">
                 <tr>
                   <th className="py-2.5 px-3 border-r border-slate-800">Username</th>
-                  <th className="py-2.5 px-2 border-r border-slate-800 text-center">Karma (Post/Com)</th>
+                  <th className="py-2.5 px-2 border-r border-slate-800 text-center">Karma (P/C)</th>
                   <th className="py-2.5 px-2 border-r border-slate-800 text-center">Karma Trend</th>
                   <th className="py-2.5 px-2 border-r border-slate-800 text-center">Contrib (P/C)</th>
                   <th className="py-2.5 px-2 border-r border-slate-800 text-center">Contrib Trend</th>
@@ -1090,7 +1374,7 @@ function FullDashboardOverview({ accounts, activities, trackerEntries }) {
               <thead className="bg-slate-950 border-b border-slate-800 text-[10px] text-slate-400 uppercase font-semibold">
                 <tr>
                   <th className="py-2.5 px-3 border-r border-slate-800">Username</th>
-                  <th className="py-2.5 px-2 border-r border-slate-800 text-center">Karma (Post/Com)</th>
+                  <th className="py-2.5 px-2 border-r border-slate-800 text-center">Karma (P/C)</th>
                   <th className="py-2.5 px-2 border-r border-slate-800 text-center">Karma Trend</th>
                   <th className="py-2.5 px-2 border-r border-slate-800 text-center">Contrib (P/C)</th>
                   <th className="py-2.5 px-2 border-r border-slate-800 text-center">Contrib Trend</th>
@@ -1106,6 +1390,7 @@ function FullDashboardOverview({ accounts, activities, trackerEntries }) {
           </div>
         </div>
       </div>
+
     </div>
   );
 }
@@ -1375,17 +1660,11 @@ function MasterDailyActivityAndAccountView({ accounts, updateAccounts, activitie
                         </a>
 
                         {acc.status === 'BANNED' ? (
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                            BANNED
-                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">BANNED</span>
                         ) : acc.status === 'WARMING' ? (
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                            WARMING
-                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">WARMING</span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                            ACTIVE
-                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">ACTIVE</span>
                         )}
                       </div>
                       <div className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{acc.persona}</div>
@@ -1414,32 +1693,16 @@ function MasterDailyActivityAndAccountView({ accounts, updateAccounts, activitie
                       {acc.accountAge}
                     </td>
 
-                    <td className="py-3.5 px-2 border-r border-slate-800 text-center font-mono font-bold text-slate-200">
-                      {acc.postKarma || 0}
-                    </td>
-                    <td className="py-3.5 px-2 border-r border-slate-800 text-center font-mono font-bold text-slate-300">
-                      {acc.commentKarma || 0}
-                    </td>
-                    <td className="py-3.5 px-3 border-r border-slate-800 text-center">
-                      {renderTrendBadge(currTotalKarma, prevTotalKarma)}
-                    </td>
+                    <td className="py-3.5 px-2 border-r border-slate-800 text-center font-mono font-bold text-slate-200">{acc.postKarma || 0}</td>
+                    <td className="py-3.5 px-2 border-r border-slate-800 text-center font-mono font-bold text-slate-300">{acc.commentKarma || 0}</td>
+                    <td className="py-3.5 px-3 border-r border-slate-800 text-center">{renderTrendBadge(currTotalKarma, prevTotalKarma)}</td>
 
-                    <td className="py-3.5 px-2 border-r border-slate-800 text-center font-mono font-bold text-cyan-400">
-                      {acc.postContribution || 0}
-                    </td>
-                    <td className="py-3.5 px-2 border-r border-slate-800 text-center font-mono font-bold text-emerald-400">
-                      {acc.commentContribution || 0}
-                    </td>
-                    <td className="py-3.5 px-3 border-r border-slate-800 text-center">
-                      {renderTrendBadge(currTotalContrib, prevTotalContrib)}
-                    </td>
+                    <td className="py-3.5 px-2 border-r border-slate-800 text-center font-mono font-bold text-cyan-400">{acc.postContribution || 0}</td>
+                    <td className="py-3.5 px-2 border-r border-slate-800 text-center font-mono font-bold text-emerald-400">{acc.commentContribution || 0}</td>
+                    <td className="py-3.5 px-3 border-r border-slate-800 text-center">{renderTrendBadge(currTotalContrib, prevTotalContrib)}</td>
 
-                    <td className="py-3.5 px-2 border-r border-slate-800 text-center font-mono font-bold text-purple-400">
-                      {acc.activeInCount || 10}
-                    </td>
-                    <td className="py-3.5 px-3 border-r border-slate-800 text-center">
-                      {renderTrendBadge(acc.activeInCount || 10, acc.prevActiveInCount || 10)}
-                    </td>
+                    <td className="py-3.5 px-2 border-r border-slate-800 text-center font-mono font-bold text-purple-400">{acc.activeInCount || 10}</td>
+                    <td className="py-3.5 px-3 border-r border-slate-800 text-center">{renderTrendBadge(acc.activeInCount || 10, acc.prevActiveInCount || 10)}</td>
 
                     <td className="py-3.5 px-3 border-r border-slate-800">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-mono font-bold border block text-center ${health.badgeColor}`}>
@@ -1454,19 +1717,9 @@ function MasterDailyActivityAndAccountView({ accounts, updateAccounts, activitie
 
                     <td className="py-3.5 px-4 text-center font-semibold">
                       <div className="flex items-center justify-center gap-3">
-                        <button 
-                          onClick={() => openEditModal(acc)} 
-                          className="text-blue-400 hover:text-blue-300 hover:underline text-xs"
-                        >
-                          Edit
-                        </button>
+                        <button onClick={() => openEditModal(acc)} className="text-blue-400 hover:text-blue-300 hover:underline text-xs">Edit</button>
                         <span className="text-slate-700">|</span>
-                        <button 
-                          onClick={() => handleDeleteAccount(acc.id)} 
-                          className="text-rose-400 hover:text-rose-300 hover:underline text-xs"
-                        >
-                          Delete
-                        </button>
+                        <button onClick={() => handleDeleteAccount(acc.id)} className="text-rose-400 hover:text-rose-300 hover:underline text-xs">Delete</button>
                       </div>
                     </td>
                   </tr>
@@ -1534,55 +1787,6 @@ function MasterDailyActivityAndAccountView({ accounts, updateAccounts, activitie
                 </div>
               </div>
 
-              <div className="p-3 bg-slate-950 border border-amber-500/30 rounded-2xl space-y-2">
-                <div className="font-bold text-amber-400 uppercase text-[10px] tracking-wider">Karma Overall (Current & Previous)</div>
-                <div className="grid grid-cols-4 gap-2 font-mono">
-                  <div>
-                    <label className="text-slate-400 block mb-0.5 text-[10px]">Post Karma</label>
-                    <input type="number" value={formData.postKarma} onChange={(e) => setFormData({ ...formData, postKarma: e.target.value })} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-white" />
-                  </div>
-                  <div>
-                    <label className="text-slate-400 block mb-0.5 text-[10px]">Comment Karma</label>
-                    <input type="number" value={formData.commentKarma} onChange={(e) => setFormData({ ...formData, commentKarma: e.target.value })} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-white" />
-                  </div>
-                  <div>
-                    <label className="text-slate-400 block mb-0.5 text-[10px]">Prev Post Karma</label>
-                    <input type="number" value={formData.prevPostKarma} onChange={(e) => setFormData({ ...formData, prevPostKarma: e.target.value })} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-slate-400" />
-                  </div>
-                  <div>
-                    <label className="text-slate-400 block mb-0.5 text-[10px]">Prev Com Karma</label>
-                    <input type="number" value={formData.prevCommentKarma} onChange={(e) => setFormData({ ...formData, prevCommentKarma: e.target.value })} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-slate-400" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-3 bg-slate-950 border border-cyan-500/30 rounded-2xl space-y-2">
-                <div className="font-bold text-cyan-400 uppercase text-[10px] tracking-wider">Contribution Overall (Current & Previous)</div>
-                <div className="grid grid-cols-4 gap-2 font-mono">
-                  <div>
-                    <label className="text-slate-400 block mb-0.5 text-[10px]">Post Contrib</label>
-                    <input type="number" value={formData.postContribution} onChange={(e) => setFormData({ ...formData, postContribution: e.target.value })} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-cyan-300 font-bold" />
-                  </div>
-                  <div>
-                    <label className="text-slate-400 block mb-0.5 text-[10px]">Comment Contrib</label>
-                    <input type="number" value={formData.commentContribution} onChange={(e) => setFormData({ ...formData, commentContribution: e.target.value })} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-emerald-300 font-bold" />
-                  </div>
-                  <div>
-                    <label className="text-slate-400 block mb-0.5 text-[10px]">Prev Post Contrib</label>
-                    <input type="number" value={formData.prevPostContribution} onChange={(e) => setFormData({ ...formData, prevPostContribution: e.target.value })} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-slate-400" />
-                  </div>
-                  <div>
-                    <label className="text-slate-400 block mb-0.5 text-[10px]">Prev Com Contrib</label>
-                    <input type="number" value={formData.prevCommentContribution} onChange={(e) => setFormData({ ...formData, prevCommentContribution: e.target.value })} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-slate-400" />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-slate-300 block mb-1">Persona Details</label>
-                <textarea rows="2" value={formData.persona} onChange={(e) => setFormData({ ...formData, persona: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white" placeholder="Persona description..."></textarea>
-              </div>
-
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
                 <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
                 <button type="submit" className="px-5 py-2 rounded-xl bg-orange-500 text-white font-bold">Save Changes</button>
@@ -1596,15 +1800,19 @@ function MasterDailyActivityAndAccountView({ accounts, updateAccounts, activitie
 }
 
 // ==========================================
-// 3. COMMENT & POST TRACKER VIEW
+// 3. COMMENT & POST TRACKER VIEW (WORKFLOW, APPROVALS, PRIORITY, DUE DATES)
 // ==========================================
 function CommentAndPostTrackerView({ accounts, trackerEntries, updateTrackerEntries, userRole, triggerNotification }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
 
+  const today = TODAY_STR;
+
   const [form, setForm] = useState({
     accountId: accounts[0]?.id || '',
-    date: new Date().toISOString().split('T')[0],
+    date: today,
+    startDate: today,
+    dueDate: today,
     subreddit: 'r/SaaS',
     contentType: 'Brand Post',
     postTitle: '',
@@ -1612,6 +1820,9 @@ function CommentAndPostTrackerView({ accounts, trackerEntries, updateTrackerEntr
     brandMention: '',
     externalLink: '',
     approvalStatus: 'Approval Needed',
+    workflowStatus: 'Waiting for Approval',
+    priority: 'High',
+    replies: 0,
     managerRemark: ''
   });
 
@@ -1619,14 +1830,19 @@ function CommentAndPostTrackerView({ accounts, trackerEntries, updateTrackerEntr
     setEditingEntry(null);
     setForm({
       accountId: accounts[0]?.id || '',
-      date: new Date().toISOString().split('T')[0],
+      date: today,
+      startDate: today,
+      dueDate: today,
       subreddit: 'r/SaaS',
       contentType: 'Brand Post',
       postTitle: '',
       qaContent: '',
       brandMention: '',
       externalLink: '',
-      approvalStatus: 'Approval Needed',
+      approvalStatus: userRole === 'EMPLOYEE' ? 'Approval Needed' : 'Approved',
+      workflowStatus: userRole === 'EMPLOYEE' ? 'Waiting for Approval' : 'Posted',
+      priority: 'High',
+      replies: 0,
       managerRemark: ''
     });
     setModalOpen(true);
@@ -1636,7 +1852,9 @@ function CommentAndPostTrackerView({ accounts, trackerEntries, updateTrackerEntr
     setEditingEntry(entry);
     setForm({
       accountId: entry.accountId,
-      date: entry.date,
+      date: entry.date || today,
+      startDate: entry.startDate || entry.date || today,
+      dueDate: entry.dueDate || entry.date || today,
       subreddit: entry.subreddit || 'r/SaaS',
       contentType: entry.contentType || 'Brand Post',
       postTitle: entry.postTitle || '',
@@ -1644,6 +1862,9 @@ function CommentAndPostTrackerView({ accounts, trackerEntries, updateTrackerEntr
       brandMention: entry.brandMention || '',
       externalLink: entry.externalLink || '',
       approvalStatus: entry.approvalStatus || 'Approval Needed',
+      workflowStatus: entry.workflowStatus || 'Drafting',
+      priority: entry.priority || 'Medium',
+      replies: entry.replies || 0,
       managerRemark: entry.managerRemark || ''
     });
     setModalOpen(true);
@@ -1654,7 +1875,7 @@ function CommentAndPostTrackerView({ accounts, trackerEntries, updateTrackerEntr
     const selectedAcc = accounts.find(a => a.id === form.accountId) || { username: 'Unknown' };
 
     if (editingEntry) {
-      const prevStatus = editingEntry.approvalStatus;
+      const prevApproval = editingEntry.approvalStatus;
       const updated = trackerEntries.map(t => t.id === editingEntry.id ? {
         ...t,
         ...form,
@@ -1662,8 +1883,8 @@ function CommentAndPostTrackerView({ accounts, trackerEntries, updateTrackerEntr
       } : t);
       updateTrackerEntries(updated);
 
-      if (prevStatus !== form.approvalStatus) {
-        triggerNotification(`Status Changed to ${form.approvalStatus}`, `Task for u/${selectedAcc.username} status was updated.`, "success");
+      if (prevApproval !== form.approvalStatus) {
+        triggerNotification(`Approval Status Changed to ${form.approvalStatus}`, `Task for u/${selectedAcc.username} was updated by ${userRole}.`, "success");
       }
     } else {
       const newEntry = {
@@ -1675,7 +1896,7 @@ function CommentAndPostTrackerView({ accounts, trackerEntries, updateTrackerEntr
         updatedAt: new Date().toISOString().slice(0, 16).replace('T', ' ')
       };
       updateTrackerEntries([newEntry, ...trackerEntries]);
-      triggerNotification("Approval Needed Notification", `u/${selectedAcc.username} submitted new ${form.contentType}.`, "warning");
+      triggerNotification("🔔 Approval Request Submitted", `Employee u/${selectedAcc.username} submitted a ${form.contentType} requiring manager approval.`, "warning");
     }
 
     setModalOpen(false);
@@ -1686,66 +1907,109 @@ function CommentAndPostTrackerView({ accounts, trackerEntries, updateTrackerEntr
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-white">Comment & Post Tracker</h2>
-          <p className="text-xs text-slate-400">Separated Subreddit and Content Type dropdowns (Brand Post, Brand Comment, General Post, General Comment).</p>
+          <p className="text-xs text-slate-400">Complete task workflow, approval status management, priority levels, and due date tracking.</p>
         </div>
 
         <button onClick={openAddModal} className="px-4 py-2.5 rounded-xl bg-orange-500 text-white font-bold text-xs flex items-center gap-2">
-          <i data-lucide="plus-circle" className="w-4 h-4"></i> Submit Comment / Post Task
+          <i data-lucide="plus-circle" className="w-4 h-4"></i> Submit Task / Post Activity
         </button>
       </div>
 
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-        <table className="w-full text-left text-xs text-slate-300">
-          <thead className="bg-slate-950 border-b border-slate-800 uppercase text-[10px] text-slate-400 font-semibold">
-            <tr>
-              <th className="py-3.5 px-4">Account & Date</th>
-              <th className="py-3.5 px-3">Subreddit</th>
-              <th className="py-3.5 px-3">Content Type</th>
-              <th className="py-3.5 px-4">Post Title / Q&A Content</th>
-              <th className="py-3.5 px-3">Brand & Link</th>
-              <th className="py-3.5 px-3">Approval Status</th>
-              <th className="py-3.5 px-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/60">
-            {trackerEntries.map(entry => {
-              const acc = accounts.find(a => a.id === entry.accountId) || { username: 'Unknown' };
-              return (
-                <tr key={entry.id} className="hover:bg-slate-800/40">
-                  <td className="py-4 px-4 font-bold text-orange-400">u/{acc.username} ({entry.date})</td>
-                  <td className="py-4 px-3 font-bold text-white">{entry.subreddit}</td>
-                  <td className="py-4 px-3">
-                    <span className="text-[10px] px-2 py-1 rounded bg-slate-800 text-cyan-300 font-bold border border-slate-700">
-                      {entry.contentType}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 max-w-xs line-clamp-2">{entry.qaContent}</td>
-                  <td className="py-4 px-3 text-cyan-400 font-semibold">{entry.brandMention || '-'}</td>
-                  <td className="py-4 px-3 font-bold text-emerald-400">{entry.approvalStatus}</td>
-                  <td className="py-4 px-4 text-right">
-                    <button onClick={() => openEditModal(entry)} className="text-blue-400 font-semibold hover:underline">Review / Edit</button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-slate-300 border-collapse min-w-[1200px]">
+            <thead className="bg-slate-950 border-b border-slate-800 uppercase text-[10px] text-slate-400 font-semibold">
+              <tr>
+                <th className="py-3.5 px-4">Account & Date</th>
+                <th className="py-3.5 px-3">Subreddit</th>
+                <th className="py-3.5 px-3">Type</th>
+                <th className="py-3.5 px-3 font-bold text-amber-400">Due Date</th>
+                <th className="py-3.5 px-3">Priority</th>
+                <th className="py-3.5 px-3">Workflow Status</th>
+                <th className="py-3.5 px-3">Approval Status</th>
+                <th className="py-3.5 px-4">Q&A / Content Preview</th>
+                <th className="py-3.5 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60">
+              {trackerEntries.map(entry => {
+                const acc = accounts.find(a => a.id === entry.accountId) || { username: 'Unknown' };
+                const isOverdue = entry.dueDate && entry.dueDate < today && entry.workflowStatus !== 'Completed';
+
+                return (
+                  <tr key={entry.id} className={`transition-colors ${isOverdue ? 'bg-rose-500/15 border-l-4 border-l-rose-500 text-rose-100 font-medium' : 'hover:bg-slate-800/40'}`}>
+                    <td className="py-4 px-4 font-bold text-orange-400">u/{acc.username} <div className="text-[10px] text-slate-400 font-mono">{entry.date}</div></td>
+                    <td className="py-4 px-3 font-bold text-white">{entry.subreddit}</td>
+                    <td className="py-4 px-3">
+                      <span className="text-[10px] px-2 py-1 rounded bg-slate-800 text-cyan-300 font-bold border border-slate-700">
+                        {entry.contentType}
+                      </span>
+                    </td>
+                    <td className="py-4 px-3 font-mono font-bold">
+                      <span className={isOverdue ? 'text-rose-400 bg-rose-500/20 px-2 py-0.5 rounded border border-rose-500/30' : 'text-slate-300'}>
+                        {entry.dueDate} {isOverdue && '🚨 OVERDUE'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-3">
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${
+                        entry.priority === 'Critical' ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' :
+                        entry.priority === 'High' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+                        'bg-slate-800 text-slate-300 border-slate-700'
+                      }`}>
+                        {entry.priority || 'Medium'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-3">
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
+                        {entry.workflowStatus || 'Posted'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-3">
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${
+                        entry.approvalStatus === 'Approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                        entry.approvalStatus === 'Rejected' ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' :
+                        entry.approvalStatus === 'Revision Required' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
+                        'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                      }`}>
+                        {entry.approvalStatus}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 max-w-xs line-clamp-2">{entry.qaContent}</td>
+                    <td className="py-4 px-4 text-right">
+                      <button onClick={() => openEditModal(entry)} className="text-blue-400 font-semibold hover:underline">
+                        {userRole === 'ADMIN' ? 'Review & Approve' : 'Edit Task'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xl p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-white">Review / Submit Q&A Entry</h3>
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white">
+                {editingEntry ? `Edit / Manager Review Task` : 'Submit New Task Activity'}
+              </h3>
+              <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-white">
+                <i data-lucide="x" className="w-5 h-5"></i>
+              </button>
+            </div>
+
             <form onSubmit={handleSaveEntry} className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-slate-300 block mb-1">Account</label>
+                  <label className="text-slate-300 block mb-1">Account *</label>
                   <select value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold">
                     {accounts.map(a => <option key={a.id} value={a.id}>u/{a.username}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-slate-300 block mb-1">Content Type (Dropdown) *</label>
+                  <label className="text-slate-300 block mb-1">Content Type *</label>
                   <select value={form.contentType} onChange={(e) => setForm({ ...form, contentType: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-cyan-300 font-bold">
                     <option value="Brand Post">Brand Post</option>
                     <option value="Brand Comment">Brand Comment</option>
@@ -1755,14 +2019,43 @@ function CommentAndPostTrackerView({ accounts, trackerEntries, updateTrackerEntr
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="text-slate-300 block mb-1">Subreddit *</label>
                   <input type="text" required value={form.subreddit} onChange={(e) => setForm({ ...form, subreddit: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white" placeholder="r/SaaS" />
                 </div>
                 <div>
-                  <label className="text-slate-300 block mb-1">Date</label>
-                  <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white" />
+                  <label className="text-slate-300 block mb-1">Start Date</label>
+                  <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white" />
+                </div>
+                <div>
+                  <label className="text-slate-300 block mb-1 font-bold text-amber-400">Due Date *</label>
+                  <input type="date" required value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className="w-full bg-slate-950 border border-amber-500/40 rounded-xl px-3 py-2 text-amber-300 font-mono font-bold" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 block mb-1">Task Priority</label>
+                  <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold">
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-slate-300 block mb-1">Workflow Status</label>
+                  <select value={form.workflowStatus} onChange={(e) => setForm({ ...form, workflowStatus: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-cyan-300 font-bold">
+                    <option value="Not Started">Not Started</option>
+                    <option value="Research">Research</option>
+                    <option value="Drafting">Drafting</option>
+                    <option value="Ready to Post">Ready to Post</option>
+                    <option value="Posted">Posted</option>
+                    <option value="Waiting for Approval">Waiting for Approval</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Completed">Completed</option>
+                  </select>
                 </div>
               </div>
 
@@ -1771,24 +2064,30 @@ function CommentAndPostTrackerView({ accounts, trackerEntries, updateTrackerEntr
                 <textarea rows="3" required value={form.qaContent} onChange={(e) => setForm({ ...form, qaContent: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"></textarea>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-slate-300 block mb-1">Approval Status</label>
-                  <select value={form.approvalStatus} onChange={(e) => setForm({ ...form, approvalStatus: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold">
-                    <option value="Approval Needed">Approval Needed</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Changes Needed">Changes Needed</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-slate-300 block mb-1">Manager Remark</label>
-                  <input type="text" value={form.managerRemark} onChange={(e) => setForm({ ...form, managerRemark: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white" />
+              <div className="p-3 bg-slate-950 border border-amber-500/30 rounded-2xl space-y-2">
+                <div className="font-bold text-amber-400 uppercase text-[10px] tracking-wider">Manager Review Section</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-slate-300 block mb-1">Approval Status</label>
+                    <select value={form.approvalStatus} onChange={(e) => setForm({ ...form, approvalStatus: e.target.value })} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-emerald-400 font-bold">
+                      <option value="Not Required">Not Required</option>
+                      <option value="Approval Needed">Approval Needed</option>
+                      <option value="Pending Review">Pending Review</option>
+                      <option value="Approved">Approved</option>
+                      <option value="Rejected">Rejected</option>
+                      <option value="Revision Required">Revision Required</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-slate-300 block mb-1">Manager Feedback / Remarks</label>
+                    <input type="text" value={form.managerRemark} onChange={(e) => setForm({ ...form, managerRemark: e.target.value })} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white" placeholder="Feedback for employee..." />
+                  </div>
                 </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setModalOpen(false)} className="px-3 py-2 bg-slate-800 rounded-xl">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-orange-500 text-white font-bold rounded-xl">Save Entry</button>
+                <button type="submit" className="px-4 py-2 bg-orange-500 text-white font-bold rounded-xl">Save Task & Notify</button>
               </div>
             </form>
           </div>
@@ -1833,10 +2132,10 @@ function CommunityTrackerView({ accounts, communities, updateCommunities, trigge
 }
 
 // ==========================================
-// 5. GOOGLE CALENDAR STYLE VIEW & REMINDERS
+// 5. GOOGLE CALENDAR STYLE VIEW & TASK DUE DATES
 // ==========================================
-function GoogleCalendarStyleView({ accounts, activities, trackerEntries }) {
-  const [selectedDate, setSelectedDate] = useState('2026-08-04');
+function GoogleCalendarStyleView({ accounts, activities, trackerEntries, goals }) {
+  const [selectedDate, setSelectedDate] = useState(TODAY_STR);
 
   const calendarDays = Array.from({ length: 31 }, (_, i) => {
     const day = (i + 1).toString().padStart(2, '0');
@@ -1844,7 +2143,7 @@ function GoogleCalendarStyleView({ accounts, activities, trackerEntries }) {
   });
 
   const dailyTasks = useMemo(() => {
-    return trackerEntries.filter(t => t.date === selectedDate);
+    return trackerEntries.filter(t => t.date === selectedDate || t.dueDate === selectedDate);
   }, [trackerEntries, selectedDate]);
 
   return (
@@ -1852,7 +2151,7 @@ function GoogleCalendarStyleView({ accounts, activities, trackerEntries }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-white">Google Calendar Style View & Reminders</h2>
-          <p className="text-xs text-slate-400">Interactive calendar view for scheduled daily tasks, post/comment entries, and day-before reminders.</p>
+          <p className="text-xs text-slate-400">Interactive month schedule showing Task Due Dates, Reddit Posts, Comments, and Approval Deadlines.</p>
         </div>
       </div>
 
@@ -1871,7 +2170,7 @@ function GoogleCalendarStyleView({ accounts, activities, trackerEntries }) {
               <div key={d} className="font-bold text-slate-500 py-1 uppercase text-[10px]">{d}</div>
             ))}
             {calendarDays.map(dateStr => {
-              const dayTasks = trackerEntries.filter(t => t.date === dateStr);
+              const dayTasks = trackerEntries.filter(t => t.date === dateStr || t.dueDate === dateStr);
               const isSelected = selectedDate === dateStr;
 
               return (
@@ -1883,10 +2182,12 @@ function GoogleCalendarStyleView({ accounts, activities, trackerEntries }) {
                   }`}
                 >
                   <span className="text-xs font-mono">{dateStr.split('-')[2]}</span>
-                  <div className="space-y-0.5">
-                    {dayTasks.map((t, idx) => (
-                      <span key={idx} className="block text-[8px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold truncate">
-                        {t.contentType}
+                  <div className="space-y-0.5 overflow-hidden">
+                    {dayTasks.slice(0, 2).map((t, idx) => (
+                      <span key={idx} className={`block text-[8px] px-1 py-0.5 rounded font-bold truncate ${
+                        t.dueDate === dateStr ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300'
+                      }`}>
+                        {t.dueDate === dateStr ? `DUE: ${t.contentType}` : t.contentType}
                       </span>
                     ))}
                   </div>
@@ -1899,22 +2200,19 @@ function GoogleCalendarStyleView({ accounts, activities, trackerEntries }) {
         <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
           <div className="border-b border-slate-800 pb-3">
             <h3 className="font-bold text-base text-white">Daily Action Set for {selectedDate}</h3>
-            <p className="text-xs text-slate-400">Scheduled activities & reminder notifications</p>
+            <p className="text-xs text-slate-400">Scheduled activities & due date reminders</p>
           </div>
 
-          <div className="space-y-3">
-            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
-              <i data-lucide="bell-ring" className="w-4 h-4 text-amber-400 shrink-0"></i>
-              <span>Reminder: Submit day-before brand posts for manager approval.</span>
-            </div>
-
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
             {dailyTasks.length === 0 ? (
               <p className="text-xs text-slate-500 py-4 text-center">No tasks scheduled for this date.</p>
             ) : (
               dailyTasks.map(t => {
                 const acc = accounts.find(a => a.id === t.accountId) || { username: 'Unknown' };
+                const isOverdue = t.dueDate && t.dueDate < TODAY_STR && t.workflowStatus !== 'Completed';
+
                 return (
-                  <div key={t.id} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs">
+                  <div key={t.id} className={`p-3.5 rounded-2xl border space-y-1.5 text-xs ${isOverdue ? 'bg-rose-500/15 border-rose-500/40 text-rose-200' : 'bg-slate-950 border-slate-800'}`}>
                     <div className="flex items-center justify-between font-bold text-white">
                       <span>u/{acc.username}</span>
                       <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
@@ -1922,6 +2220,7 @@ function GoogleCalendarStyleView({ accounts, activities, trackerEntries }) {
                       </span>
                     </div>
                     <div className="text-[11px] text-slate-300">Subreddit: <strong>{t.subreddit}</strong></div>
+                    <div className="text-[11px] text-amber-400 font-mono">Due Date: {t.dueDate} {isOverdue && '🚨 OVERDUE'}</div>
                     <div className="text-[11px] text-slate-400 line-clamp-2 italic">{t.qaContent}</div>
                   </div>
                 );
@@ -1935,26 +2234,192 @@ function GoogleCalendarStyleView({ accounts, activities, trackerEntries }) {
 }
 
 // ==========================================
-// 6. REPORTS & DATA EXPORT VIEW
+// 6. REPORTS & MULTI-FORMAT DATA EXPORT (EXCEL, CSV, PDF)
 // ==========================================
 function ReportsAndExportView({ accounts, activities, trackerEntries }) {
+  const [filterMember, setFilterMember] = useState('ALL');
+  const [filterApproval, setFilterApproval] = useState('ALL');
+  const [filterPriority, setFilterPriority] = useState('ALL');
+
+  const filteredTasks = useMemo(() => {
+    return trackerEntries.filter(t => {
+      const matchMember = filterMember === 'ALL' || t.accountId === filterMember;
+      const matchApproval = filterApproval === 'ALL' || t.approvalStatus === filterApproval;
+      const matchPriority = filterPriority === 'ALL' || t.priority === filterPriority;
+      return matchMember && matchApproval && matchPriority;
+    });
+  }, [trackerEntries, filterMember, filterApproval, filterPriority]);
+
   const exportCSV = () => {
-    const csvStr = Papa.unparse(accounts);
+    const dataToExport = filteredTasks.map(t => {
+      const acc = accounts.find(a => a.id === t.accountId) || { username: 'Unknown' };
+      return {
+        TaskID: t.id,
+        Employee: `u/${acc.username}`,
+        Subreddit: t.subreddit,
+        ContentType: t.contentType,
+        StartDate: t.startDate || t.date,
+        DueDate: t.dueDate || t.date,
+        Priority: t.priority || 'Medium',
+        WorkflowStatus: t.workflowStatus || 'Posted',
+        ApprovalStatus: t.approvalStatus,
+        QAContent: t.qaContent,
+        ManagerRemark: t.managerRemark || ''
+      };
+    });
+
+    const csvStr = Papa.unparse(dataToExport);
     const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Rat.io_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `Rat.io_Report_${TODAY_STR}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
+  const exportExcel = () => {
+    const dataToExport = filteredTasks.map(t => {
+      const acc = accounts.find(a => a.id === t.accountId) || { username: 'Unknown' };
+      return {
+        TaskID: t.id,
+        Employee: `u/${acc.username}`,
+        Subreddit: t.subreddit,
+        ContentType: t.contentType,
+        StartDate: t.startDate || t.date,
+        DueDate: t.dueDate || t.date,
+        Priority: t.priority || 'Medium',
+        WorkflowStatus: t.workflowStatus || 'Posted',
+        ApprovalStatus: t.approvalStatus,
+        QAContent: t.qaContent,
+        ManagerRemark: t.managerRemark || ''
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Tasks Report");
+    XLSX.writeFile(workbook, `Rat.io_Report_${TODAY_STR}.xlsx`);
+  };
+
+  const exportPDF = () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('landscape');
+
+    doc.setFontSize(16);
+    doc.text("Rat.io - Reddit Activity & Task Report", 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${TODAY_STR} | Total Tasks: ${filteredTasks.length}`, 14, 22);
+
+    const tableData = filteredTasks.map(t => {
+      const acc = accounts.find(a => a.id === t.accountId) || { username: 'Unknown' };
+      return [
+        `u/${acc.username}`,
+        t.subreddit,
+        t.contentType,
+        t.dueDate || t.date,
+        t.priority || 'Medium',
+        t.workflowStatus || 'Posted',
+        t.approvalStatus
+      ];
+    });
+
+    doc.autoTable({
+      head: [['Employee', 'Subreddit', 'Content Type', 'Due Date', 'Priority', 'Workflow Status', 'Approval Status']],
+      body: tableData,
+      startY: 28,
+      theme: 'grid',
+      styles: { fontSize: 8 }
+    });
+
+    doc.save(`Rat.io_Report_${TODAY_STR}.pdf`);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white">Reports & Export Center</h2>
-        <button onClick={exportCSV} className="px-4 py-2 bg-orange-500 text-white font-bold text-xs rounded-xl">Export CSV</button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-white">Filtered Reports & Multi-Format Export Center</h2>
+          <p className="text-xs text-slate-400">Filter tasks by team member, approval status, or priority, and export directly to Excel, CSV, or PDF.</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button onClick={exportExcel} className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-lg">
+            <i data-lucide="file-spreadsheet" className="w-4 h-4"></i> Export Excel (.xlsx)
+          </button>
+          <button onClick={exportCSV} className="px-3.5 py-2 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-lg">
+            <i data-lucide="file-text" className="w-4 h-4"></i> Export CSV
+          </button>
+          <button onClick={exportPDF} className="px-3.5 py-2 bg-purple-500 hover:bg-purple-600 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-lg">
+            <i data-lucide="download" className="w-4 h-4"></i> Export PDF
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-900/90 border border-slate-800 p-4 rounded-2xl text-xs">
+        <div>
+          <label className="text-slate-400 block mb-1 font-semibold">Filter by Team Member</label>
+          <select value={filterMember} onChange={(e) => setFilterMember(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+            <option value="ALL">All Team Accounts</option>
+            {accounts.map(a => <option key={a.id} value={a.id}>u/{a.username}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <label className="text-slate-400 block mb-1 font-semibold">Filter by Approval Status</label>
+          <select value={filterApproval} onChange={(e) => setFilterApproval(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+            <option value="ALL">All Approval Statuses</option>
+            <option value="Approval Needed">Approval Needed</option>
+            <option value="Pending Review">Pending Review</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Revision Required">Revision Required</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="text-slate-400 block mb-1 font-semibold">Filter by Priority</label>
+          <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+            <option value="ALL">All Priorities</option>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Critical">Critical</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+        <table className="w-full text-left text-xs text-slate-300">
+          <thead className="bg-slate-950 border-b border-slate-800 uppercase text-[10px] text-slate-400 font-semibold">
+            <tr>
+              <th className="py-3.5 px-4">Employee</th>
+              <th className="py-3.5 px-3">Subreddit</th>
+              <th className="py-3.5 px-3">Content Type</th>
+              <th className="py-3.5 px-3">Due Date</th>
+              <th className="py-3.5 px-3">Priority</th>
+              <th className="py-3.5 px-3">Workflow Status</th>
+              <th className="py-3.5 px-3">Approval Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/60">
+            {filteredTasks.map(t => {
+              const acc = accounts.find(a => a.id === t.accountId) || { username: 'Unknown' };
+              return (
+                <tr key={t.id} className="hover:bg-slate-800/40">
+                  <td className="py-3.5 px-4 font-bold text-orange-400">u/{acc.username}</td>
+                  <td className="py-3.5 px-3 font-bold text-white">{t.subreddit}</td>
+                  <td className="py-3.5 px-3 text-cyan-300 font-semibold">{t.contentType}</td>
+                  <td className="py-3.5 px-3 font-mono text-amber-300">{t.dueDate || t.date}</td>
+                  <td className="py-3.5 px-3 font-semibold">{t.priority || 'Medium'}</td>
+                  <td className="py-3.5 px-3 text-slate-300">{t.workflowStatus || 'Posted'}</td>
+                  <td className="py-3.5 px-3 font-bold text-emerald-400">{t.approvalStatus}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
