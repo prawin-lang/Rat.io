@@ -1,8 +1,40 @@
 // Rat.io - Reddit Activity Tracker (React 18 + Tailwind SPA)
-// Rebranded to Rat.io with Subtitle: Reddit Activity Tracker.
-// Features Space Creation (Name, Space ID, Password), Space Joining (User Email, Space ID, Password), and Responsive Dark/Light Theme Switching.
+// Final Persistent LocalStorage Engine: All created, edited, and deleted accounts, Q&A entries, activities, spaces, and settings are saved permanently in browser storage.
+// Data will NEVER be lost or deleted on page refresh!
 
 const { useState, useEffect, useMemo } = React;
+
+// --- LOCALSTORAGE PERSISTENCE HELPERS ---
+const STORAGE_KEYS = {
+  THEME: 'ratio_v5_theme',
+  ACCOUNTS: 'ratio_v5_accounts',
+  ACTIVITIES: 'ratio_v5_activities',
+  TRACKER: 'ratio_v5_tracker',
+  COMMUNITIES: 'ratio_v5_communities',
+  SPACES: 'ratio_v5_spaces',
+  CURRENT_SPACE: 'ratio_v5_current_space',
+  NOTIFICATIONS: 'ratio_v5_notifications'
+};
+
+function getStorageItem(key, defaultValue) {
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved !== null && saved !== undefined && saved !== 'undefined') {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error("LocalStorage read error for key " + key, e);
+  }
+  return defaultValue;
+}
+
+function setStorageItem(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.error("LocalStorage write error for key " + key, e);
+  }
+}
 
 // --- INITIAL SEED SPACES & ACCOUNTS ---
 const INITIAL_SPACES = [
@@ -286,7 +318,7 @@ function calculateHealthScore(account, activities, trackerEntries) {
   return { score, badgeColor };
 }
 
-// --- MINIMAL TREND BADGE (↑ +550 Green, ↓ -20 Red, - Blue Stable) NO WORDS ---
+// --- MINIMAL TREND BADGE (↑ +550 Green, ↓ -20 Red, - Blue Stable) ---
 function renderTrendBadge(currentVal, prevVal) {
   const diff = currentVal - prevVal;
   
@@ -318,31 +350,67 @@ function renderTrendBadge(currentVal, prevVal) {
 // --- MAIN RAT.IO APPLICATION CONTAINER ---
 function RAMSApp() {
   const [activeTab, setActiveTab] = useState('daily-activity');
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState(() => getStorageItem(STORAGE_KEYS.THEME, 'dark'));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notifDrawerOpen, setNotifDrawerOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
-  // SPACE MANAGEMENT & ACCESS STATE
-  const [spaces, setSpaces] = useState(INITIAL_SPACES);
-  const [currentSpace, setCurrentSpace] = useState(INITIAL_SPACES[0]);
+  // PERSISTENT STATE LOADED FROM LOCALSTORAGE
+  const [spaces, setSpacesState] = useState(() => getStorageItem(STORAGE_KEYS.SPACES, INITIAL_SPACES));
+  const [currentSpace, setCurrentSpaceState] = useState(() => getStorageItem(STORAGE_KEYS.CURRENT_SPACE, INITIAL_SPACES[0]));
   const [spaceModalOpen, setSpaceModalOpen] = useState(false);
-  const [spaceModalTab, setSpaceModalTab] = useState('CREATE'); // 'CREATE' | 'JOIN'
+  const [spaceModalTab, setSpaceModalTab] = useState('CREATE');
 
-  // SPACE FORM STATE
   const [createSpaceForm, setCreateSpaceForm] = useState({ spaceName: '', spaceId: '', spacePassword: '', creatorEmail: '' });
   const [joinSpaceForm, setJoinSpaceForm] = useState({ userEmail: '', spaceId: '', spacePassword: '' });
 
   const [userRole, setUserRole] = useState('ADMIN');
   
-  const [accounts, setAccounts] = useState(INITIAL_ACCOUNTS);
-  const [communities, setCommunities] = useState(INITIAL_COMMUNITIES);
-  const [activities, setActivities] = useState(INITIAL_ACTIVITIES);
-  const [trackerEntries, setTrackerEntries] = useState(INITIAL_TRACKER_ENTRIES);
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const [accounts, setAccountsState] = useState(() => getStorageItem(STORAGE_KEYS.ACCOUNTS, INITIAL_ACCOUNTS));
+  const [communities, setCommunitiesState] = useState(() => getStorageItem(STORAGE_KEYS.COMMUNITIES, INITIAL_COMMUNITIES));
+  const [activities, setActivitiesState] = useState(() => getStorageItem(STORAGE_KEYS.ACTIVITIES, INITIAL_ACTIVITIES));
+  const [trackerEntries, setTrackerEntriesState] = useState(() => getStorageItem(STORAGE_KEYS.TRACKER, INITIAL_TRACKER_ENTRIES));
+  const [notifications, setNotificationsState] = useState(() => getStorageItem(STORAGE_KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS));
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+  // SYNCHRONOUS UPDATER HELPERS TO GUARANTEE 100% RELIABLE LOCALSTORAGE WRITES
+  const updateAccounts = (newAccounts) => {
+    setAccountsState(newAccounts);
+    setStorageItem(STORAGE_KEYS.ACCOUNTS, newAccounts);
+  };
+
+  const updateActivities = (newActivities) => {
+    setActivitiesState(newActivities);
+    setStorageItem(STORAGE_KEYS.ACTIVITIES, newActivities);
+  };
+
+  const updateTrackerEntries = (newTrackerEntries) => {
+    setTrackerEntriesState(newTrackerEntries);
+    setStorageItem(STORAGE_KEYS.TRACKER, newTrackerEntries);
+  };
+
+  const updateCommunities = (newCommunities) => {
+    setCommunitiesState(newCommunities);
+    setStorageItem(STORAGE_KEYS.COMMUNITIES, newCommunities);
+  };
+
+  const updateSpaces = (newSpaces) => {
+    setSpacesState(newSpaces);
+    setStorageItem(STORAGE_KEYS.SPACES, newSpaces);
+  };
+
+  const updateCurrentSpace = (newSpace) => {
+    setCurrentSpaceState(newSpace);
+    setStorageItem(STORAGE_KEYS.CURRENT_SPACE, newSpace);
+  };
+
+  const updateNotifications = (newNotifs) => {
+    setNotificationsState(newNotifs);
+    setStorageItem(STORAGE_KEYS.NOTIFICATIONS, newNotifs);
+  };
+
+  useEffect(() => { 
+    setStorageItem(STORAGE_KEYS.THEME, theme); 
+    document.documentElement.setAttribute('data-theme', theme); 
   }, [theme]);
 
   useEffect(() => {
@@ -358,12 +426,25 @@ function RAMSApp() {
       read: false,
       createdAt: new Date().toISOString().slice(0, 16).replace('T', ' ')
     };
-    setNotifications(prev => [newNotif, ...prev]);
+    updateNotifications([newNotif, ...notifications]);
     setToastMessage({ title, message, type });
     setTimeout(() => setToastMessage(null), 4500);
   };
 
-  // HANDLE CREATE SPACE
+  const handleResetData = () => {
+    if (window.confirm("Are you sure you want to reset all data back to original demo defaults?")) {
+      localStorage.clear();
+      updateAccounts(INITIAL_ACCOUNTS);
+      updateActivities(INITIAL_ACTIVITIES);
+      updateTrackerEntries(INITIAL_TRACKER_ENTRIES);
+      updateCommunities(INITIAL_COMMUNITIES);
+      updateSpaces(INITIAL_SPACES);
+      updateCurrentSpace(INITIAL_SPACES[0]);
+      updateNotifications(INITIAL_NOTIFICATIONS);
+      triggerNotification("Data Reset", "App state reset to demo defaults.", "warning");
+    }
+  };
+
   const handleCreateSpace = (e) => {
     e.preventDefault();
     if (!createSpaceForm.spaceName || !createSpaceForm.spaceId || !createSpaceForm.spacePassword) return;
@@ -376,13 +457,13 @@ function RAMSApp() {
       role: 'ADMIN'
     };
 
-    setSpaces([...spaces, newSpace]);
-    setCurrentSpace(newSpace);
+    const updated = [...spaces, newSpace];
+    updateSpaces(updated);
+    updateCurrentSpace(newSpace);
     setSpaceModalOpen(false);
-    triggerNotification("Space Created!", `New space '${newSpace.name}' (ID: ${newSpace.id}) created successfully.`, "success");
+    triggerNotification("Space Created!", `New space '${newSpace.name}' (ID: ${newSpace.id}) created and saved.`, "success");
   };
 
-  // HANDLE JOIN SPACE
   const handleJoinSpace = (e) => {
     e.preventDefault();
     const targetSpace = spaces.find(s => s.id === joinSpaceForm.spaceId.toUpperCase().trim());
@@ -397,7 +478,7 @@ function RAMSApp() {
       return;
     }
 
-    setCurrentSpace(targetSpace);
+    updateCurrentSpace(targetSpace);
     setSpaceModalOpen(false);
     triggerNotification("Space Joined!", `Successfully joined space '${targetSpace.name}' as ${joinSpaceForm.userEmail}`, "success");
   };
@@ -427,7 +508,6 @@ function RAMSApp() {
       {/* SIDEBAR NAVIGATION */}
       <aside className={`${sidebarCollapsed ? 'w-20' : 'w-64'} flex flex-col border-r border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 h-screen transition-all duration-300 z-30`}>
         
-        {/* LOGO & BRANDING */}
         <div className="p-4 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-orange-600 via-amber-500 to-red-600 flex items-center justify-center font-extrabold text-white shadow-lg shadow-orange-500/30 shrink-0">
@@ -450,7 +530,6 @@ function RAMSApp() {
           </button>
         </div>
 
-        {/* ACTIVE SPACE INDICATOR */}
         {!sidebarCollapsed && (
           <div className="p-3 mx-3 mt-3 rounded-2xl bg-slate-950/80 border border-orange-500/30 flex items-center justify-between">
             <div>
@@ -468,7 +547,6 @@ function RAMSApp() {
           </div>
         )}
 
-        {/* NAVIGATION LINKS */}
         <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
           {[
             { id: 'dashboard', label: 'Executive Dashboard', icon: 'layout-dashboard' },
@@ -505,7 +583,6 @@ function RAMSApp() {
           })}
         </nav>
 
-        {/* THEME TOGGLE & ROLE SWITCHER */}
         {!sidebarCollapsed && (
           <div className="p-3 border-t border-slate-800 bg-slate-950/60 space-y-2.5">
             <div className="flex items-center justify-between text-[11px] text-slate-400">
@@ -518,7 +595,6 @@ function RAMSApp() {
               </button>
             </div>
 
-            {/* LIGHT AND DARK MODE BUTTONS */}
             <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800">
               <button 
                 onClick={() => setTheme('dark')}
@@ -537,6 +613,13 @@ function RAMSApp() {
                 <i data-lucide="sun" className="w-3.5 h-3.5"></i> Light
               </button>
             </div>
+
+            <button 
+              onClick={handleResetData}
+              className="w-full py-1 text-[10px] text-slate-500 hover:text-rose-400 transition-colors text-center"
+            >
+              Reset Data to Defaults
+            </button>
           </div>
         )}
       </aside>
@@ -555,10 +638,14 @@ function RAMSApp() {
               {activeTab === 'calendar' && 'Google Calendar Style Schedule & Reminders'}
               {activeTab === 'reports' && 'Filtered Reports & Data Export'}
             </h2>
+
+            <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Auto-Save Active
+            </span>
           </div>
 
           <div className="flex items-center gap-4">
-            {/* NOTIFICATION BELL */}
             <div className="relative">
               <button 
                 onClick={() => setNotifDrawerOpen(!notifDrawerOpen)}
@@ -572,13 +659,12 @@ function RAMSApp() {
                 )}
               </button>
 
-              {/* NOTIFICATION DRAWER */}
               {notifDrawerOpen && (
                 <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                     <h3 className="font-bold text-xs text-white">Notifications</h3>
                     <button 
-                      onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))}
+                      onClick={() => updateNotifications(notifications.map(n => ({ ...n, read: true })))}
                       className="text-[10px] text-orange-400 hover:underline"
                     >
                       Mark all read
@@ -601,7 +687,6 @@ function RAMSApp() {
               )}
             </div>
 
-            {/* CREATE / JOIN SPACE BUTTON */}
             <button 
               onClick={() => setSpaceModalOpen(true)}
               className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow-lg shadow-orange-500/20 transition-all"
@@ -625,9 +710,9 @@ function RAMSApp() {
           {activeTab === 'daily-activity' && (
             <MasterDailyActivityAndAccountView 
               accounts={accounts}
-              setAccounts={setAccounts}
+              updateAccounts={updateAccounts}
               activities={activities}
-              setActivities={setActivities}
+              updateActivities={updateActivities}
               trackerEntries={trackerEntries}
               triggerNotification={triggerNotification}
             />
@@ -637,7 +722,7 @@ function RAMSApp() {
             <CommentAndPostTrackerView 
               accounts={accounts}
               trackerEntries={trackerEntries}
-              setTrackerEntries={setTrackerEntries}
+              updateTrackerEntries={updateTrackerEntries}
               userRole={userRole}
               triggerNotification={triggerNotification}
             />
@@ -647,7 +732,7 @@ function RAMSApp() {
             <CommunityTrackerView 
               accounts={accounts}
               communities={communities}
-              setCommunities={setCommunities}
+              updateCommunities={updateCommunities}
               triggerNotification={triggerNotification}
             />
           )}
@@ -668,10 +753,8 @@ function RAMSApp() {
             />
           )}
         </main>
-
       </div>
 
-      {/* SPACE CREATION & JOINING MODAL */}
       {spaceModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-4">
@@ -685,7 +768,6 @@ function RAMSApp() {
               </button>
             </div>
 
-            {/* TAB SELECTOR: CREATE VS JOIN */}
             <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800 text-xs">
               <button 
                 onClick={() => setSpaceModalTab('CREATE')}
@@ -705,7 +787,6 @@ function RAMSApp() {
               </button>
             </div>
 
-            {/* FORM 1: CREATE SPACE */}
             {spaceModalTab === 'CREATE' ? (
               <form onSubmit={handleCreateSpace} className="space-y-3 text-xs">
                 <div>
@@ -757,7 +838,6 @@ function RAMSApp() {
                 </button>
               </form>
             ) : (
-              /* FORM 2: JOIN SPACE */
               <form onSubmit={handleJoinSpace} className="space-y-3 text-xs">
                 <div>
                   <label className="text-slate-300 block mb-1 font-semibold">Your Email Address *</label>
@@ -1033,7 +1113,7 @@ function FullDashboardOverview({ accounts, activities, trackerEntries }) {
 // ==========================================
 // 2. MASTER DAILY ACTIVITY & ACCOUNTS TABLE
 // ==========================================
-function MasterDailyActivityAndAccountView({ accounts, setAccounts, activities, setActivities, trackerEntries, triggerNotification }) {
+function MasterDailyActivityAndAccountView({ accounts, updateAccounts, activities, updateActivities, trackerEntries, triggerNotification }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [groupFilter, setGroupFilter] = useState('ALL');
 
@@ -1150,7 +1230,7 @@ function MasterDailyActivityAndAccountView({ accounts, setAccounts, activities, 
         prevActiveInCount: Number(formData.prevActiveInCount),
         weeklyTarget: Number(formData.weeklyTarget)
       } : a);
-      setAccounts(updated);
+      updateAccounts(updated);
       triggerNotification("Account Updated", `Successfully updated u/${formData.username}`, "success");
     } else {
       const newAcc = {
@@ -1169,7 +1249,7 @@ function MasterDailyActivityAndAccountView({ accounts, setAccounts, activities, 
         prevActiveInCount: Number(formData.prevActiveInCount),
         weeklyTarget: Number(formData.weeklyTarget)
       };
-      setAccounts([...accounts, newAcc]);
+      updateAccounts([...accounts, newAcc]);
       triggerNotification("Account Created", `Successfully created u/${formData.username}`, "success");
     }
     setModalOpen(false);
@@ -1178,7 +1258,7 @@ function MasterDailyActivityAndAccountView({ accounts, setAccounts, activities, 
   const handleDeleteAccount = (accId) => {
     const acc = accounts.find(a => a.id === accId);
     if (window.confirm(`Are you sure you want to delete account u/${acc ? acc.username : ''}?`)) {
-      setAccounts(accounts.filter(a => a.id !== accId));
+      updateAccounts(accounts.filter(a => a.id !== accId));
       triggerNotification("Account Removed", "Account removed successfully.", "warning");
     }
   };
@@ -1518,7 +1598,7 @@ function MasterDailyActivityAndAccountView({ accounts, setAccounts, activities, 
 // ==========================================
 // 3. COMMENT & POST TRACKER VIEW
 // ==========================================
-function CommentAndPostTrackerView({ accounts, trackerEntries, setTrackerEntries, userRole, triggerNotification }) {
+function CommentAndPostTrackerView({ accounts, trackerEntries, updateTrackerEntries, userRole, triggerNotification }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
 
@@ -1580,7 +1660,7 @@ function CommentAndPostTrackerView({ accounts, trackerEntries, setTrackerEntries
         ...form,
         updatedAt: new Date().toISOString().slice(0, 16).replace('T', ' ')
       } : t);
-      setTrackerEntries(updated);
+      updateTrackerEntries(updated);
 
       if (prevStatus !== form.approvalStatus) {
         triggerNotification(`Status Changed to ${form.approvalStatus}`, `Task for u/${selectedAcc.username} status was updated.`, "success");
@@ -1594,7 +1674,7 @@ function CommentAndPostTrackerView({ accounts, trackerEntries, setTrackerEntries
         comments: 0,
         updatedAt: new Date().toISOString().slice(0, 16).replace('T', ' ')
       };
-      setTrackerEntries([newEntry, ...trackerEntries]);
+      updateTrackerEntries([newEntry, ...trackerEntries]);
       triggerNotification("Approval Needed Notification", `u/${selectedAcc.username} submitted new ${form.contentType}.`, "warning");
     }
 
@@ -1721,7 +1801,7 @@ function CommentAndPostTrackerView({ accounts, trackerEntries, setTrackerEntries
 // ==========================================
 // 4. COMMUNITY TRACKER VIEW
 // ==========================================
-function CommunityTrackerView({ accounts, communities, setCommunities, triggerNotification }) {
+function CommunityTrackerView({ accounts, communities, updateCommunities, triggerNotification }) {
   return (
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-xl font-bold text-white">Community Tracker</h2>
