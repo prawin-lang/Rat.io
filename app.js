@@ -254,46 +254,26 @@ function RAMSApp() {
   const groupASummary = useMemo(() => {
     const groupAIds = new Set(groupAAccounts.map(a => a.id));
     const groupAct = activities.filter(act => groupAIds.has(act.accountId));
-    if (groupAAccounts.length === 0) return { avgPostKarma: 0, avgCommentKarma: 0, avgTotalKarma: 0, weeklyGrowth: 0, count: 0 };
-    
-    let totalPost = 0, totalComment = 0, totalKarma = 0;
-    groupAAccounts.forEach(acc => {
-      const accAct = groupAct.filter(a => a.accountId === acc.id).sort((a,b) => new Date(b.date) - new Date(a.date))[0];
-      totalPost += accAct ? accAct.postKarma : 1000;
-      totalComment += accAct ? accAct.commentKarma : 3000;
-      totalKarma += accAct ? accAct.totalKarma : 4000;
-    });
+    const totalPosts = groupAct.reduce((sum, a) => sum + (a.posts || 0) + (a.contribPostCount || 0), 0);
+    const totalComments = groupAct.reduce((sum, a) => sum + (a.comments || 0) + (a.contribCommentCount || 0), 0);
 
-    const count = groupAAccounts.length;
     return {
-      avgPostKarma: Math.round(totalPost / count),
-      avgCommentKarma: Math.round(totalComment / count),
-      avgTotalKarma: Math.round(totalKarma / count),
-      weeklyGrowth: 14.8,
-      count
+      totalPosts,
+      totalComments,
+      count: groupAAccounts.length
     };
   }, [groupAAccounts, activities]);
 
   const groupBSummary = useMemo(() => {
     const groupBIds = new Set(groupBAccounts.map(a => a.id));
     const groupAct = activities.filter(act => groupBIds.has(act.accountId));
-    if (groupBAccounts.length === 0) return { avgPostKarma: 0, avgCommentKarma: 0, avgTotalKarma: 0, weeklyGrowth: 0, count: 0 };
-    
-    let totalPost = 0, totalComment = 0, totalKarma = 0;
-    groupBAccounts.forEach(acc => {
-      const accAct = groupAct.filter(a => a.accountId === acc.id).sort((a,b) => new Date(b.date) - new Date(a.date))[0];
-      totalPost += accAct ? accAct.postKarma : 700;
-      totalComment += accAct ? accAct.commentKarma : 1800;
-      totalKarma += accAct ? accAct.totalKarma : 2500;
-    });
+    const totalPosts = groupAct.reduce((sum, a) => sum + (a.posts || 0) + (a.contribPostCount || 0), 0);
+    const totalComments = groupAct.reduce((sum, a) => sum + (a.comments || 0) + (a.contribCommentCount || 0), 0);
 
-    const count = groupBAccounts.length;
     return {
-      avgPostKarma: Math.round(totalPost / count),
-      avgCommentKarma: Math.round(totalComment / count),
-      avgTotalKarma: Math.round(totalKarma / count),
-      weeklyGrowth: 9.2,
-      count
+      totalPosts,
+      totalComments,
+      count: groupBAccounts.length
     };
   }, [groupBAccounts, activities]);
 
@@ -645,6 +625,42 @@ function RAMSApp() {
   );
 }
 
+// --- HEALTH SCORE CALCULATION (Karma Growth + Activity Volume ONLY) ---
+function calculateAccountHealthScore(account, activities = []) {
+  const accActivities = activities
+    .filter(a => a.accountId === account.id)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  if (accActivities.length === 0) return 50;
+
+  // 1. Karma Growth component (max 50 pts)
+  let totalKarmaGain = 0;
+  accActivities.forEach(act => {
+    if (act.karmaDiff && act.karmaDiff > 0) {
+      totalKarmaGain += act.karmaDiff;
+    }
+  });
+
+  let karmaGrowthPts = 10;
+  if (totalKarmaGain >= 100) karmaGrowthPts = 50;
+  else if (totalKarmaGain >= 50) karmaGrowthPts = 40;
+  else if (totalKarmaGain >= 20) karmaGrowthPts = 30;
+  else if (totalKarmaGain > 0) karmaGrowthPts = 20;
+
+  // 2. Activity Completed component (max 50 pts)
+  const totalPosts = accActivities.reduce((sum, a) => sum + (a.posts || 0) + (a.contribPostCount || 0), 0);
+  const totalComments = accActivities.reduce((sum, a) => sum + (a.comments || 0) + (a.contribCommentCount || 0), 0);
+  const totalActs = totalPosts + totalComments;
+
+  let activityPts = 10;
+  if (totalActs >= 20) activityPts = 50;
+  else if (totalActs >= 10) activityPts = 40;
+  else if (totalActs >= 5) activityPts = 30;
+  else if (totalActs >= 1) activityPts = 20;
+
+  return Math.min(100, Math.max(0, karmaGrowthPts + activityPts));
+}
+
 // --- MODULE 1: REDDIT MARKETING KPI DASHBOARD VIEW ---
 function DashboardView({ kpi, groupA, groupB, accounts, activities, goals, communities = [], onNavigate }) {
   useEffect(() => { lucide.createIcons(); }, []);
@@ -681,14 +697,13 @@ function DashboardView({ kpi, groupA, groupB, accounts, activities, goals, commu
         </div>
       </div>
 
-      {/* KPI METRICS GRID */}
+      {/* KPI METRICS GRID - (Contribution Comment removed as requested) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total Accounts', value: kpi.totalAccounts, icon: 'users', color: 'text-blue-400', sub: `${kpi.activeAccounts} Active` },
           { label: 'Communities Joined', value: kpi.communitiesJoined, icon: 'message-square', color: 'text-cyan-400', sub: 'Subreddits' },
           { label: 'Daily Karma Growth', value: `+${kpi.totalKarmaGrowth || 0}`, icon: 'trending-up', color: 'text-amber-400', sub: 'Net diff' },
           { label: 'Contrib Posts', value: kpi.contribPosts || 0, icon: 'file-text', color: 'text-orange-400', sub: 'Count' },
-          { label: 'Contrib Comments', value: kpi.contribComments || 0, icon: 'message-circle', color: 'text-emerald-400', sub: 'Count' },
           { label: 'Group A / B Split', value: `${kpi.groupACount} / ${kpi.groupBCount}`, icon: 'folder-git-2', color: 'text-purple-400', sub: 'Accounts' },
           { label: 'Total Output', value: `${kpi.totalPosts}P / ${kpi.totalComments}C`, icon: 'activity', color: 'text-indigo-400', sub: 'Posts & Comments' },
           { label: 'Pending Goals', value: kpi.pendingGoals, icon: 'target', color: 'text-rose-400', sub: 'Active' }
@@ -706,7 +721,7 @@ function DashboardView({ kpi, groupA, groupB, accounts, activities, goals, commu
         ))}
       </div>
 
-      {/* GROUP A & GROUP B SUMMARY CARDS */}
+      {/* GROUP A & GROUP B SUMMARY CARDS (Shows ONLY Total Posts and Total Comments) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-md space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-4">
@@ -717,23 +732,16 @@ function DashboardView({ kpi, groupA, groupB, accounts, activities, goals, commu
                 <p className="text-xs text-slate-400">{groupA.count} Registered Accounts</p>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20">
-              +{groupA.weeklyGrowth}% Weekly
-            </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 pt-1">
-            <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-              <span className="text-[10px] text-slate-400 font-semibold block">Avg Post Karma</span>
-              <p className="text-lg font-bold text-slate-100 font-mono mt-0.5">{groupA.avgPostKarma.toLocaleString()}</p>
+          <div className="grid grid-cols-2 gap-4 pt-1">
+            <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 text-center">
+              <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider block">Total Posts Done</span>
+              <p className="text-2xl font-extrabold text-cyan-400 font-mono mt-1">{(groupA.totalPosts || 0).toLocaleString()}</p>
             </div>
-            <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-              <span className="text-[10px] text-slate-400 font-semibold block">Avg Comment Karma</span>
-              <p className="text-lg font-bold text-slate-100 font-mono mt-0.5">{groupA.avgCommentKarma.toLocaleString()}</p>
-            </div>
-            <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-              <span className="text-[10px] text-slate-400 font-semibold block">Avg Total Karma</span>
-              <p className="text-lg font-bold text-purple-400 font-mono mt-0.5">{groupA.avgTotalKarma.toLocaleString()}</p>
+            <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 text-center">
+              <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider block">Total Comments Done</span>
+              <p className="text-2xl font-extrabold text-emerald-400 font-mono mt-1">{(groupA.totalComments || 0).toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -747,25 +755,93 @@ function DashboardView({ kpi, groupA, groupB, accounts, activities, goals, commu
                 <p className="text-xs text-slate-400">{groupB.count} Registered Accounts</p>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20">
-              +{groupB.weeklyGrowth}% Weekly
-            </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 pt-1">
-            <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-              <span className="text-[10px] text-slate-400 font-semibold block">Avg Post Karma</span>
-              <p className="text-lg font-bold text-slate-100 font-mono mt-0.5">{groupB.avgPostKarma.toLocaleString()}</p>
+          <div className="grid grid-cols-2 gap-4 pt-1">
+            <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 text-center">
+              <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider block">Total Posts Done</span>
+              <p className="text-2xl font-extrabold text-cyan-400 font-mono mt-1">{(groupB.totalPosts || 0).toLocaleString()}</p>
             </div>
-            <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-              <span className="text-[10px] text-slate-400 font-semibold block">Avg Comment Karma</span>
-              <p className="text-lg font-bold text-slate-100 font-mono mt-0.5">{groupB.avgCommentKarma.toLocaleString()}</p>
-            </div>
-            <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-              <span className="text-[10px] text-slate-400 font-semibold block">Avg Total Karma</span>
-              <p className="text-lg font-bold text-amber-400 font-mono mt-0.5">{groupB.avgTotalKarma.toLocaleString()}</p>
+            <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 text-center">
+              <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider block">Total Comments Done</span>
+              <p className="text-2xl font-extrabold text-emerald-400 font-mono mt-1">{(groupB.totalComments || 0).toLocaleString()}</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* ACCOUNT PERFORMANCE TABLE (Google Sheets Style - Health score & Weekly goal completion) */}
+      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4 shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div>
+            <h3 className="font-bold text-white text-base">Account Performance & Weekly Goal Tracking</h3>
+            <p className="text-xs text-slate-400">Health scores calculated strictly from daily karma growth & completed posts/comments activity.</p>
+          </div>
+          <button onClick={() => onNavigate('accounts')} className="text-xs text-orange-400 hover:underline font-semibold">Manage Accounts</button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-slate-300 border-collapse">
+            <thead className="bg-slate-950 border-b border-slate-800 uppercase text-[10px] text-slate-400 font-semibold">
+              <tr>
+                <th className="py-3 px-4 border-r border-slate-800/80">Account Username</th>
+                <th className="py-3 px-4 border-r border-slate-800/80">Group</th>
+                <th className="py-3 px-4 border-r border-slate-800/80 text-center">Health Score</th>
+                <th className="py-3 px-4 border-r border-slate-800/80 text-center">Weekly Performance Status</th>
+                <th className="py-3 px-4 text-center">Weekly Goal Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60">
+              {accounts.map(acc => {
+                const healthScore = calculateAccountHealthScore(acc, activities);
+                const isPerformingWell = healthScore >= 60;
+
+                // Find goal status for account
+                const accGoal = goals.find(g => g.title.toLowerCase().includes(acc.username.toLowerCase()) || (g.status === 'GREEN' && isPerformingWell));
+                const goalCompleted = accGoal ? accGoal.completionPct >= 80 : isPerformingWell;
+
+                return (
+                  <tr key={acc.id} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="py-3.5 px-4 font-bold text-white border-r border-slate-800/60 font-mono">
+                      u/{acc.username}
+                    </td>
+                    <td className="py-3.5 px-4 border-r border-slate-800/60 font-medium">
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${acc.group === 'GROUP_A' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}`}>
+                        {acc.group}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 border-r border-slate-800/60 font-mono font-extrabold text-center text-sm">
+                      <span className={healthScore >= 70 ? 'text-emerald-400' : healthScore >= 50 ? 'text-amber-400' : 'text-rose-400'}>
+                        {healthScore}/100
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 border-r border-slate-800/60 text-center">
+                      {isPerformingWell ? (
+                        <span className="inline-block px-3 py-1 rounded-full text-[11px] font-extrabold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                          🟢 Performing Well
+                        </span>
+                      ) : (
+                        <span className="inline-block px-3 py-1 rounded-full text-[11px] font-extrabold bg-rose-500/15 text-rose-300 border border-rose-500/30">
+                          🔴 Underperforming
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      {goalCompleted ? (
+                        <span className="inline-block px-3 py-1 rounded-lg text-[11px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                          ✓ Goal Completed
+                        </span>
+                      ) : (
+                        <span className="inline-block px-3 py-1 rounded-lg text-[11px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                          ✗ Goal Incomplete
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -1317,7 +1393,22 @@ function CommunityTrackerView({ communities, setCommunities, accounts, activitie
   );
 }
 
-// --- MODULE 4: DAILY ACTIVITY TRACKER WITH NUMERIC CONTRIBUTION POST & COMMENT COUNTS ---
+// --- HELPER FOR METRIC CHANGE STATUS INDICATORS ---
+function getMetricStatusIndicator(currentVal, prevVal) {
+  if (prevVal === undefined || prevVal === null) {
+    return { label: '⚪ Flat (Base)', cls: 'bg-slate-800/40 text-slate-400 border-slate-700/60' };
+  }
+  const diff = currentVal - prevVal;
+  if (diff > 0) {
+    return { label: `🟢 Improved (+${diff})`, cls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 font-bold' };
+  } else if (diff < 0) {
+    return { label: `🔴 Declined (${diff})`, cls: 'bg-rose-500/15 text-rose-300 border-rose-500/30 font-bold' };
+  } else {
+    return { label: `⚪ Flat (0)`, cls: 'bg-slate-800/40 text-slate-400 border-slate-700/60' };
+  }
+}
+
+// --- MODULE 4: DAILY ACTIVITY TRACKER WITH NUMERIC CONTRIBUTION COUNTS & 11-COLUMN TRACKING TABLE ---
 function DailyActivityTrackerView({ activities, setActivities, accounts, triggerNotification }) {
   const [selectedAccountId, setSelectedAccountId] = useState(accounts[0]?.id || '');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -1390,218 +1481,298 @@ function DailyActivityTrackerView({ activities, setActivities, accounts, trigger
     });
   }, [activities, accounts, filterAccountId, filterDate, filterMinKarmaDiff, filterMinContribPost, filterMinContribComment, filterSearch]);
 
+  // Group activities chronologically per account to compute status vs previous update
+  const accountActivityHistory = useMemo(() => {
+    const map = {};
+    accounts.forEach(acc => {
+      map[acc.id] = activities
+        .filter(a => a.accountId === acc.id)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+    });
+    return map;
+  }, [activities, accounts]);
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4">
         <div>
-          <h2 className="text-xl font-bold text-white">Daily Activity Tracker</h2>
-          <p className="text-xs text-slate-400">Record session time, karma growth, Contribution Posts (count), and Contribution Comments (count).</p>
+          <h2 className="text-xl font-bold text-white">Per-Account Activity & Metric Tracking</h2>
+          <p className="text-xs text-slate-400">Track karma overall, contributions, and activity changes vs previous update per account.</p>
+        </div>
+        {hasActiveFilters && (
+          <button 
+            onClick={resetFilters} 
+            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-orange-400 text-xs font-semibold transition-colors flex items-center gap-1.5 border border-slate-700"
+          >
+            <i data-lucide="rotate-ccw" className="w-3.5 h-3.5"></i>
+            Reset Filters
+          </button>
+        )}
+      </div>
+
+      {/* FILTER CONTROLS BAR (Moved to top side as requested) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 text-xs shadow-sm">
+        <div className="flex items-center gap-2 font-bold text-slate-200 text-xs uppercase tracking-wider">
+          <i data-lucide="filter" className="w-4 h-4 text-orange-400"></i>
+          <span>Activity Log Filters</span>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div>
+            <label className="text-slate-400 font-semibold block mb-1">Account</label>
+            <select 
+              value={filterAccountId} 
+              onChange={(e) => setFilterAccountId(e.target.value)} 
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-white font-semibold focus:border-orange-500 outline-none"
+            >
+              <option value="ALL">All Accounts</option>
+              {accounts.map(acc => <option key={acc.id} value={acc.id}>u/{acc.username}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-slate-400 font-semibold block mb-1">Date</label>
+            <input 
+              type="date" 
+              value={filterDate} 
+              onChange={(e) => setFilterDate(e.target.value)} 
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-white focus:border-orange-500 outline-none" 
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-400 font-semibold block mb-1">Min Karma Change</label>
+            <input 
+              type="number" 
+              placeholder="e.g. 20" 
+              value={filterMinKarmaDiff} 
+              onChange={(e) => setFilterMinKarmaDiff(e.target.value)} 
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-amber-300 font-mono focus:border-orange-500 outline-none" 
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-400 font-semibold block mb-1">Min Contrib Posts</label>
+            <input 
+              type="number" 
+              placeholder="e.g. 1" 
+              value={filterMinContribPost} 
+              onChange={(e) => setFilterMinContribPost(e.target.value)} 
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-cyan-300 font-mono focus:border-orange-500 outline-none" 
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-400 font-semibold block mb-1">Min Contrib Comments</label>
+            <input 
+              type="number" 
+              placeholder="e.g. 1" 
+              value={filterMinContribComment} 
+              onChange={(e) => setFilterMinContribComment(e.target.value)} 
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-emerald-300 font-mono focus:border-orange-500 outline-none" 
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-400 font-semibold block mb-1">Search User / Notes</label>
+            <input 
+              type="text" 
+              placeholder="Keywords..." 
+              value={filterSearch} 
+              onChange={(e) => setFilterSearch(e.target.value)} 
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-white focus:border-orange-500 outline-none" 
+            />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
-          <h3 className="font-bold text-base text-white">Manual Entry Form</h3>
+      {/* 2-COLUMN LAYOUT: Entry Form on LEFT side, 11-Column Table on RIGHT side */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        {/* LEFT SIDE: "Save login activity" Manual Entry Form */}
+        <div className="lg:col-span-1 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4 h-fit">
+          <div className="border-b border-slate-800 pb-2">
+            <h3 className="font-bold text-base text-white flex items-center gap-2">
+              <i data-lucide="check-square" className="w-4 h-4 text-orange-400"></i>
+              Save Login Activity
+            </h3>
+            <p className="text-[11px] text-slate-400">Manual daily session log form</p>
+          </div>
 
           <form onSubmit={handleSaveActivity} className="space-y-3 text-xs">
             <div>
               <label className="text-slate-400 font-semibold block mb-1">Account *</label>
-              <select value={selectedAccountId} onChange={(e) => setSelectedAccountId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-semibold">
+              <select value={selectedAccountId} onChange={(e) => setSelectedAccountId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-semibold outline-none focus:border-orange-500">
                 {accounts.map(acc => <option key={acc.id} value={acc.id}>u/{acc.username}</option>)}
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-slate-400 font-semibold block mb-1">Date *</label>
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white" />
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-white outline-none focus:border-orange-500" />
               </div>
               <div>
                 <label className="text-slate-400 font-semibold block mb-1">Session Mins</label>
-                <input type="number" value={sessionTime} onChange={(e) => setSessionTime(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white" />
+                <input type="number" value={sessionTime} onChange={(e) => setSessionTime(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-white outline-none focus:border-orange-500 font-mono" />
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="text-slate-400 font-semibold block mb-1">Upvotes</label>
-                <input type="number" value={upvotes} onChange={(e) => setUpvotes(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-1 text-white" />
+                <input type="number" value={upvotes} onChange={(e) => setUpvotes(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-1 text-white font-mono" />
               </div>
               <div>
                 <label className="text-slate-400 font-semibold block mb-1">Comments</label>
-                <input type="number" value={comments} onChange={(e) => setComments(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-1 text-white" />
+                <input type="number" value={comments} onChange={(e) => setComments(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-1 text-white font-mono" />
               </div>
               <div>
                 <label className="text-slate-400 font-semibold block mb-1">Posts</label>
-                <input type="number" value={posts} onChange={(e) => setPosts(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-1 text-white" />
+                <input type="number" value={posts} onChange={(e) => setPosts(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-1 text-white font-mono" />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-slate-400 font-semibold block mb-1">Post Karma</label>
-                <input type="number" value={postKarma} onChange={(e) => setPostKarma(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono" />
+                <input type="number" value={postKarma} onChange={(e) => setPostKarma(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-white font-mono" />
               </div>
               <div>
                 <label className="text-slate-400 font-semibold block mb-1">Comment Karma</label>
-                <input type="number" value={commentKarma} onChange={(e) => setCommentKarma(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono" />
+                <input type="number" value={commentKarma} onChange={(e) => setCommentKarma(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-white font-mono" />
               </div>
             </div>
 
-            {/* NUMERIC CONTRIBUTION POST AND CONTRIBUTION COMMENT FIELDS */}
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
               <div>
-                <label className="text-slate-400 font-semibold block mb-1 text-cyan-400">Contribution Post</label>
-                <input type="number" value={contribPostCount} onChange={(e) => setContribPostCount(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-cyan-300 font-mono font-bold" />
+                <label className="text-slate-400 font-semibold block mb-1 text-cyan-400">Contrib Post</label>
+                <input type="number" value={contribPostCount} onChange={(e) => setContribPostCount(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-cyan-300 font-mono font-bold" />
               </div>
               <div>
-                <label className="text-slate-400 font-semibold block mb-1 text-emerald-400">Contribution Comment</label>
-                <input type="number" value={contribCommentCount} onChange={(e) => setContribCommentCount(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-emerald-300 font-mono font-bold" />
+                <label className="text-slate-400 font-semibold block mb-1 text-emerald-400">Contrib Comment</label>
+                <input type="number" value={contribCommentCount} onChange={(e) => setContribCommentCount(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-emerald-300 font-mono font-bold" />
               </div>
             </div>
 
-            <button type="submit" className="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-lg transition-all mt-2">
+            <button type="submit" className="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-lg transition-all mt-2">
               Save Activity Log
             </button>
           </form>
         </div>
 
-        <div className="lg:col-span-2 bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+        {/* RIGHT SIDE: NEW 11-COLUMN PER-ACCOUNT TRACKING TABLE */}
+        <div className="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div>
-              <h3 className="font-bold text-base text-white">Activity Log History</h3>
-              <p className="text-[11px] text-slate-400">Showing {filteredActivities.length} of {activities.length} activity records</p>
-            </div>
-            {hasActiveFilters && (
-              <button 
-                onClick={resetFilters} 
-                className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-orange-400 text-xs font-medium transition-colors flex items-center gap-1"
-              >
-                <i data-lucide="rotate-ccw" className="w-3.5 h-3.5"></i>
-                Reset Filters
-              </button>
-            )}
-          </div>
-
-          {/* FILTER CONTROLS BAR */}
-          <div className="bg-slate-950 border border-slate-800/80 rounded-xl p-3.5 space-y-3 text-xs">
-            <div className="flex items-center gap-2 font-semibold text-slate-300 text-[11px] uppercase tracking-wider">
-              <i data-lucide="filter" className="w-3.5 h-3.5 text-orange-400"></i>
-              <span>Filter Activity Logs</span>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              <div>
-                <label className="text-slate-400 font-medium block mb-1">Account</label>
-                <select 
-                  value={filterAccountId} 
-                  onChange={(e) => setFilterAccountId(e.target.value)} 
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white font-medium focus:border-orange-500 outline-none"
-                >
-                  <option value="ALL">All Accounts</option>
-                  {accounts.map(acc => <option key={acc.id} value={acc.id}>u/{acc.username}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-slate-400 font-medium block mb-1">Date</label>
-                <input 
-                  type="date" 
-                  value={filterDate} 
-                  onChange={(e) => setFilterDate(e.target.value)} 
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white focus:border-orange-500 outline-none" 
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 font-medium block mb-1">Min Karma Change</label>
-                <input 
-                  type="number" 
-                  placeholder="e.g. 20" 
-                  value={filterMinKarmaDiff} 
-                  onChange={(e) => setFilterMinKarmaDiff(e.target.value)} 
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-amber-300 font-mono focus:border-orange-500 outline-none" 
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 font-medium block mb-1">Min Contrib Posts</label>
-                <input 
-                  type="number" 
-                  placeholder="e.g. 1" 
-                  value={filterMinContribPost} 
-                  onChange={(e) => setFilterMinContribPost(e.target.value)} 
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-cyan-300 font-mono focus:border-orange-500 outline-none" 
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 font-medium block mb-1">Min Contrib Comments</label>
-                <input 
-                  type="number" 
-                  placeholder="e.g. 1" 
-                  value={filterMinContribComment} 
-                  onChange={(e) => setFilterMinContribComment(e.target.value)} 
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-emerald-300 font-mono focus:border-orange-500 outline-none" 
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 font-medium block mb-1">Search Notes / User</label>
-                <input 
-                  type="text" 
-                  placeholder="Keywords..." 
-                  value={filterSearch} 
-                  onChange={(e) => setFilterSearch(e.target.value)} 
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white focus:border-orange-500 outline-none" 
-                />
-              </div>
+              <h3 className="font-bold text-base text-white">Per-Account Tracking Table</h3>
+              <p className="text-xs text-slate-400">Showing {filteredActivities.length} of {activities.length} total entries</p>
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
+            <table className="w-full text-left text-xs text-slate-300 border-collapse">
               <thead className="bg-slate-950 border-b border-slate-800 uppercase text-[10px] text-slate-400 font-semibold">
-                <tr>
-                  <th className="py-3 px-3">Date & Account</th>
-                  <th className="py-3 px-3">Session</th>
-                  <th className="py-3 px-3">Post & Comment Karma</th>
-                  <th className="py-3 px-3 text-center">Karma Change</th>
-                  <th className="py-3 px-3 text-center">Contrib Posts</th>
-                  <th className="py-3 px-3 text-center">Contrib Comments</th>
-                  <th className="py-3 px-3">Actions</th>
+                {/* SECTION HEADER ROW */}
+                <tr className="border-b border-slate-800/80 bg-slate-950/80">
+                  <th colSpan="2" className="py-2 px-3 border-r border-slate-800 text-slate-300 font-bold bg-slate-900/50">User & Session</th>
+                  <th colSpan="3" className="py-2 px-3 border-r border-slate-800 text-purple-300 font-bold bg-purple-950/20 text-center">Karma Overall</th>
+                  <th colSpan="3" className="py-2 px-3 border-r border-slate-800 text-cyan-300 font-bold bg-cyan-950/20 text-center">Contribution</th>
+                  <th colSpan="3" className="py-2 px-3 text-emerald-300 font-bold bg-emerald-950/20 text-center">Activities</th>
+                </tr>
+                {/* DETAILED COLUMN HEADERS */}
+                <tr className="bg-slate-950">
+                  <th className="py-2.5 px-3 border-r border-slate-800/60">User Name</th>
+                  <th className="py-2.5 px-3 border-r border-slate-800/60 font-mono">Session Time</th>
+                  <th className="py-2.5 px-3 border-r border-slate-800/60 font-mono text-center">Karma Post</th>
+                  <th className="py-2.5 px-3 border-r border-slate-800/60 font-mono text-center">Karma Comment</th>
+                  <th className="py-2.5 px-3 border-r border-slate-800/60 text-center">Karma Status</th>
+                  <th className="py-2.5 px-3 border-r border-slate-800/60 font-mono text-center">Contrib Post</th>
+                  <th className="py-2.5 px-3 border-r border-slate-800/60 font-mono text-center">Contrib Comment</th>
+                  <th className="py-2.5 px-3 border-r border-slate-800/60 text-center">Contrib Status</th>
+                  <th className="py-2.5 px-3 border-r border-slate-800/60 font-mono text-center">Activities Post</th>
+                  <th className="py-2.5 px-3 border-r border-slate-800/60 font-mono text-center">Activities Comment</th>
+                  <th className="py-2.5 px-3 text-center">Activities Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
                 {filteredActivities.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="py-8 text-center text-slate-400 font-medium">
-                      No activity logs match the current filter criteria.
+                    <td colSpan="11" className="py-8 text-center text-slate-400 font-medium">
+                      No tracking entries match current filters.
                     </td>
                   </tr>
                 ) : (
                   filteredActivities.map(act => {
                     const acc = accounts.find(a => a.id === act.accountId) || { username: 'Unknown' };
+                    
+                    // Compute status vs previous update for this same user
+                    const userHistory = accountActivityHistory[act.accountId] || [];
+                    const currentIndex = userHistory.findIndex(h => h.id === act.id);
+                    const prevAct = currentIndex > 0 ? userHistory[currentIndex - 1] : null;
+
+                    // Karma Status
+                    const karmaStatus = getMetricStatusIndicator(
+                      act.totalKarma || (act.postKarma + act.commentKarma),
+                      prevAct ? (prevAct.totalKarma || (prevAct.postKarma + prevAct.commentKarma)) : undefined
+                    );
+
+                    // Contribution Status
+                    const currentContrib = (act.contribPostCount || 0) + (act.contribCommentCount || 0);
+                    const prevContrib = prevAct ? ((prevAct.contribPostCount || 0) + (prevAct.contribCommentCount || 0)) : undefined;
+                    const contribStatus = getMetricStatusIndicator(currentContrib, prevContrib);
+
+                    // Activities Status
+                    const currentActTotal = (act.posts || 0) + (act.comments || 0);
+                    const prevActTotal = prevAct ? ((prevAct.posts || 0) + (prevAct.comments || 0)) : undefined;
+                    const actStatus = getMetricStatusIndicator(currentActTotal, prevActTotal);
+
                     return (
-                      <tr key={act.id} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="py-3.5 px-3">
-                          <div className="font-bold text-white">u/{acc.username}</div>
-                          <div className="text-[10px] text-slate-400 font-mono">{act.date}</div>
+                      <tr key={act.id} className="hover:bg-slate-800/40 transition-colors font-mono">
+                        <td className="py-3 px-3 font-bold text-white border-r border-slate-800/60">
+                          u/{acc.username}
                         </td>
-                        <td className="py-3.5 px-3 font-mono">{act.sessionTime} mins</td>
-                        <td className="py-3.5 px-3 font-mono">
-                          <div>Post: {act.postKarma}</div>
-                          <div>Comment: {act.commentKarma}</div>
+                        <td className="py-3 px-3 text-slate-300 border-r border-slate-800/60">
+                          {act.sessionTime || 0} mins
                         </td>
-                        <td className="py-3.5 px-3 font-mono font-bold text-center">
-                          <span className="inline-block px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                            +{act.karmaDiff || 0}
+
+                        {/* KARMA OVERALL SECTION */}
+                        <td className="py-3 px-3 text-purple-300 text-center border-r border-slate-800/60">
+                          {act.postKarma || 0}
+                        </td>
+                        <td className="py-3 px-3 text-purple-300 text-center border-r border-slate-800/60">
+                          {act.commentKarma || 0}
+                        </td>
+                        <td className="py-3 px-3 text-center border-r border-slate-800/60">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] border ${karmaStatus.cls}`}>
+                            {karmaStatus.label}
                           </span>
                         </td>
-                        <td className="py-3.5 px-3 font-mono font-bold text-cyan-400 text-center">{act.contribPostCount || 0}</td>
-                        <td className="py-3.5 px-3 font-mono font-bold text-emerald-400 text-center">{act.contribCommentCount || 0}</td>
-                        <td className="py-3.5 px-3">
-                          <button onClick={() => setActivities(activities.filter(a => a.id !== act.id))} className="text-rose-400 font-semibold hover:underline">Delete</button>
+
+                        {/* CONTRIBUTION SECTION */}
+                        <td className="py-3 px-3 text-cyan-300 text-center border-r border-slate-800/60">
+                          {act.contribPostCount || 0}
+                        </td>
+                        <td className="py-3 px-3 text-cyan-300 text-center border-r border-slate-800/60">
+                          {act.contribCommentCount || 0}
+                        </td>
+                        <td className="py-3 px-3 text-center border-r border-slate-800/60">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] border ${contribStatus.cls}`}>
+                            {contribStatus.label}
+                          </span>
+                        </td>
+
+                        {/* ACTIVITIES SECTION */}
+                        <td className="py-3 px-3 text-emerald-300 text-center border-r border-slate-800/60">
+                          {act.posts || 0}
+                        </td>
+                        <td className="py-3 px-3 text-emerald-300 text-center border-r border-slate-800/60">
+                          {act.comments || 0}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] border ${actStatus.cls}`}>
+                            {actStatus.label}
+                          </span>
                         </td>
                       </tr>
                     );
